@@ -31,6 +31,11 @@ TCGplayer, so those cards fall back to their European market price, or to what t
 typically sells for in recent sets. Every estimate is clearly marked — a `~`, an amber colour,
 an `EST` tag, and a note in the card sheet explaining exactly where the figure came from.
 
+**Deck builder** (under *View more*) — pick a Pokémon type, add what you like to a deck, tick off
+the cards you already own, name it and save it. A saved deck keeps every card in it — art, set,
+number and value — and tells you which ones you still need to go and find. Saved decks and your
+collection live in your own browser; there's no account and nothing is uploaded.
+
 ## Running it
 
 It's one HTML file with no build step and no dependencies — open `index.html` in a browser and it

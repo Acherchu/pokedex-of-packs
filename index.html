@@ -122,6 +122,86 @@
   }
   .legend b{color:var(--gold);font-weight:800}
 
+  /* ---------- view more menu ---------- */
+  .morewrap{position:relative;display:inline-block}
+  .menu{
+    position:absolute;top:calc(100% + 9px);right:0;z-index:70;min-width:250px;
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:6px;
+    box-shadow:var(--shadow);
+  }
+  .menu button{
+    display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);
+    font:inherit;font-size:14px;font-weight:600;padding:9px 11px;border-radius:8px;cursor:pointer;
+  }
+  .menu button:hover{background:rgba(255,203,5,.10);color:var(--gold)}
+  .menu button span{display:inline-block;width:22px}
+  .menu button small{display:block;color:var(--dim);font-weight:400;font-size:11.5px;padding-left:22px}
+  .menu button:hover small{color:var(--dim)}
+
+  /* ---------- deck builder ---------- */
+  .types{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
+  .types button{
+    display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);
+    color:var(--text);font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;
+    border-radius:999px;cursor:pointer;
+  }
+  .types button:hover{border-color:var(--dim)}
+  .types button i{width:13px;height:13px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.45)}
+  .types button.on{border-color:currentColor;background:rgba(255,255,255,.07)}
+  .deckgrid{padding-bottom:150px}
+  .addbar{display:flex;gap:6px;margin-top:8px}
+  .addbar button{
+    flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;
+    font-size:12.5px;font-weight:700;padding:7px 4px;border-radius:8px;cursor:pointer;
+  }
+  .addbar button.add:hover{border-color:var(--gold);color:var(--gold)}
+  .addbar button.own{flex:0 0 auto;padding:7px 10px}
+  .addbar button.own.yes{border-color:#7ee38a;color:#7ee38a;background:rgba(126,227,138,.10)}
+  .indeck{
+    position:absolute;top:6px;left:6px;background:var(--gold);color:#20180a;font-weight:800;
+    font-size:11px;border-radius:6px;padding:1px 7px;
+  }
+  .ownmark{
+    position:absolute;top:6px;right:6px;background:rgba(126,227,138,.92);color:#0c2412;
+    font-weight:900;font-size:11px;border-radius:50%;width:19px;height:19px;line-height:19px;text-align:center;
+  }
+
+  /* ---------- deck tray ---------- */
+  .tray{
+    position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(19,26,36,.97);
+    backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:10px 20px 12px;
+  }
+  .tray-in{max-width:1400px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+  .tray input[type=text]{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;
+    padding:8px 11px;font:inherit;font-size:14px;min-width:190px;
+  }
+  .tray .tot{font-size:14px;color:var(--dim);white-space:nowrap}
+  .tray .tot b{color:var(--text);font-size:19px;font-weight:800}
+  .tray .strip{display:flex;gap:6px;overflow-x:auto;flex:1 1 260px;padding:3px 0;min-height:56px}
+  .tray .strip .mini{position:relative;flex:0 0 auto;cursor:pointer}
+  .tray .strip .mini img{height:50px;border-radius:4px;display:block}
+  .tray .strip .mini b{
+    position:absolute;right:-3px;top:-4px;background:var(--gold);color:#20180a;border-radius:50%;
+    min-width:17px;height:17px;font-size:10px;line-height:17px;text-align:center;font-weight:800;
+  }
+  .tray .strip .empty{color:var(--dim);font-size:13px;align-self:center;font-style:italic}
+
+  /* ---------- decks ---------- */
+  .decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:22px}
+  .deckcard{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:14px;padding:16px;cursor:pointer;transition:transform .15s,border-color .15s;
+  }
+  .deckcard:hover{transform:translateY(-3px);border-color:var(--gold)}
+  .deckcard h3{margin:0 0 4px;font-size:18px}
+  .deckcard .dmeta{color:var(--dim);font-size:12.5px}
+  .deckcard .fan{display:flex;margin:12px 0 4px;height:62px}
+  .deckcard .fan img{height:62px;border-radius:4px;margin-right:-26px;border:1px solid rgba(0,0,0,.5)}
+  .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
+  .need{color:#ffb4b4}
+  .havepct{color:#7ee38a}
+
   /* ---------- set grid ---------- */
   .sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:28px}
   .set{
@@ -226,6 +306,14 @@
     <nav class="tabs">
       <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
       <button id="tab-cards" onclick="showSearch()">Card search</button>
+      <span class="morewrap">
+        <button id="tab-more" onclick="toggleMore(event)">View more ▾</button>
+        <div class="menu" id="moremenu" hidden>
+          <button onclick="showBuilder()"><span>🛠</span> Deck builder<small>Build your dream deck by type</small></button>
+          <button onclick="showDecks()"><span>💾</span> My decks<small>Decks you've saved</small></button>
+          <button onclick="showOwned()"><span>✅</span> My collection<small>Cards you've ticked off</small></button>
+        </div>
+      </span>
     </nav>
     <div class="grow"></div>
     <input type="search" id="q" placeholder="Search sets…" autocomplete="off">
@@ -337,6 +425,119 @@ async function loadCards(setId){
   return all;
 }
 
+/* ---------------- saved stuff ----------------
+   Decks and ticked-off cards live in localStorage, on this browser only. Both store a small
+   snapshot of every card (name, set, number, art, price) so a saved deck still renders in full
+   without re-fetching 60 cards — the whole point is being able to see what to go and pull. */
+const store = {
+  get(k, fallback){
+    try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
+  },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+};
+let OWNED = store.get("pkOwned", {});      // cardId -> snapshot
+let DECKS = store.get("pkDecks", []);      // [{id, name, cards:[{id, qty, snap}], saved}]
+let deck  = store.get("pkDraft", {name:"", cards:[]});   // the deck being built
+
+function snapOf(c){
+  const r = cardValue(c);
+  return {
+    id: c.id, n: c.name, num: String(c.number), set: (c.set && c.set.name) || "",
+    sid: (c.set && c.set.id) || "",
+    // both sizes are stored rather than derived: older cards are images.pokemontcg.io/<set>/<n>.png
+    // with a _hires twin, newer ones are images.scrydex.com/... where no such twin exists
+    img: (c.images && c.images.small) || "", big: (c.images && c.images.large) || "",
+    rar: c.rarity || "", t: (c.types || [])[0] || "",
+    v: r ? +r.v.toFixed(2) : null, est: !!(r && r.est)
+  };
+}
+function snapFor(id, fallback){
+  const c = CARDS.get(id);
+  return c ? snapOf(c) : fallback;
+}
+
+/* --- owning --- */
+function owns(id){ return !!OWNED[id]; }
+function toggleOwn(id, ev){
+  if(ev) ev.stopPropagation();               // the tile behind opens the card sheet
+  if(OWNED[id]) delete OWNED[id];
+  else{
+    const c = CARDS.get(id);
+    if(!c) return;
+    OWNED[id] = snapOf(c);
+  }
+  store.set("pkOwned", OWNED);
+  refreshView();
+}
+
+/* --- the deck being built --- */
+function inDeck(id){ const e = deck.cards.find(x => x.id === id); return e ? e.qty : 0; }
+function deckCount(){ return deck.cards.reduce((n, e) => n + e.qty, 0); }
+function addToDeck(id, ev){
+  if(ev) ev.stopPropagation();
+  const c = CARDS.get(id); if(!c) return;
+  const e = deck.cards.find(x => x.id === id);
+  if(e) e.qty++;
+  else deck.cards.push({id:id, qty:1, snap:snapOf(c)});
+  store.set("pkDraft", deck);
+  refreshView();
+}
+function dropFromDeck(id, ev){
+  if(ev) ev.stopPropagation();
+  const i = deck.cards.findIndex(x => x.id === id);
+  if(i < 0) return;
+  if(deck.cards[i].qty > 1) deck.cards[i].qty--;
+  else deck.cards.splice(i, 1);
+  store.set("pkDraft", deck);
+  refreshView();
+}
+function clearDeck(){
+  if(!deck.cards.length) return;
+  if(!confirm("Empty this deck? Saved decks aren't affected.")) return;
+  deck = {name:deck.name, cards:[]};
+  store.set("pkDraft", deck);
+  refreshView();
+}
+function saveDeck(){
+  if(!deck.cards.length){ alert("Add some cards first."); return; }
+  const nameIn = document.getElementById("deckname");
+  const name = ((nameIn && nameIn.value) || deck.name || "").trim() || "Untitled deck";
+  DECKS.unshift({
+    id: "d" + Date.now(),
+    name: name,
+    cards: deck.cards.map(e => ({id:e.id, qty:e.qty, snap:snapFor(e.id, e.snap)})),
+    saved: new Date().toISOString().slice(0,10)
+  });
+  store.set("pkDecks", DECKS);
+  deck = {name:"", cards:[]};
+  store.set("pkDraft", deck);
+  showDecks();
+}
+function deleteDeck(id, ev){
+  if(ev) ev.stopPropagation();
+  const d = DECKS.find(x => x.id === id);
+  if(!d || !confirm('Delete "' + d.name + '"? This cannot be undone.')) return;
+  DECKS = DECKS.filter(x => x.id !== id);
+  store.set("pkDecks", DECKS);
+  refreshView();
+}
+function editDeck(id){
+  const d = DECKS.find(x => x.id === id); if(!d) return;
+  if(deck.cards.length && !confirm("This replaces the deck you're currently building. Continue?")) return;
+  deck = {name:d.name, cards:d.cards.map(e => ({id:e.id, qty:e.qty, snap:e.snap}))};
+  for(const e of deck.cards) if(e.snap) CARDS.set(e.id, CARDS.get(e.id) || snapToCard(e.snap));
+  store.set("pkDraft", deck);
+  showBuilder();
+}
+// a saved snapshot is enough to re-open the card sheet after a reload
+function snapToCard(s){
+  return {
+    id:s.id, name:s.n, number:s.num, rarity:s.rar, types:s.t ? [s.t] : [],
+    images:{small:s.img, large:s.big || s.img},
+    set:{id:s.sid, name:s.set}, tcgplayer:null, cardmarket:null, _snap:true
+  };
+}
+
 /* ---------------- card search ----------------
    Searches every card ever printed by name. Each result is one specific printing, because
    knowing which one you own is the whole point — the same Charizard exists in dozens of sets
@@ -345,7 +546,7 @@ const PAGE = 60;
 let searchTerm = "", searchPage = 1, searchTotal = 0, searchHits = [], searchBusy = false, searchSeq = 0;
 
 function showSearch(){
-  closeCard();
+  closeCard(); closeMore();
   VIEW = "search";
   setTab();
   qIn.placeholder = "Search every card…";
@@ -354,11 +555,34 @@ function showSearch(){
   renderSearch();
   qIn.focus();
 }
+const MORE_VIEWS = ["deck","decks","deckview","owned"];
 function setTab(){
-  document.getElementById("tab-packs").classList.toggle("on", VIEW !== "search");
+  document.getElementById("tab-packs").classList.toggle("on", VIEW === "sets" || VIEW === "set");
   document.getElementById("tab-cards").classList.toggle("on", VIEW === "search");
+  document.getElementById("tab-more").classList.toggle("on", MORE_VIEWS.indexOf(VIEW) >= 0);
   sortIn.style.display = VIEW === "sets" ? "" : "none";
+  qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search") ? "" : "none";
 }
+function toggleMore(ev){
+  if(ev) ev.stopPropagation();
+  const m = document.getElementById("moremenu");
+  m.hidden = !m.hidden;
+}
+function closeMore(){ document.getElementById("moremenu").hidden = true; }
+document.addEventListener("click", e => {
+  if(!e.target.closest || !e.target.closest(".morewrap")) closeMore();
+});
+
+/* Re-draw whatever is on screen after the deck or collection changes. */
+function refreshView(){
+  if(VIEW === "deck") renderBuilder();
+  else if(VIEW === "decks") showDecks();
+  else if(VIEW === "owned") showOwned();
+  else if(VIEW === "deckview"){ const d = DECKS.find(x => x.id === lastDeckId); d ? openDeck(d.id) : showDecks(); }
+  else if(VIEW === "search") drawFound();
+  else if(VIEW === "set") drawCards();
+}
+let lastDeckId = "";
 function exampleSearch(t){ qIn.value = t; runSearch(t); }
 
 let typeTimer = null;
@@ -460,8 +684,9 @@ function findTile(c){
   const s = c.set || {};
   const r = cardValue(c);
   const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
-  return '<div class="find" onclick="openCard(\'' + c.id + '\')">'
+  return '<div class="find" onclick="openCard(\'' + c.id + '\')" style="position:relative">'
     + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
+    + (owns(c.id) ? '<div class="ownmark">✓</div>' : '')
     + '<div class="fnm">' + esc(c.name) + '</div>'
     + '<div class="fset">' + sym + '<span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
     + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
@@ -675,6 +900,7 @@ function cardTile(c, cls){
   return '<div class="card ' + (cls || "") + '" onclick="openCard(\'' + c.id + '\')" title="' + esc(c.name) + '">'
     + (img ? '<img src="' + img + '" alt="' + esc(c.name) + '" loading="lazy">' : '<div style="padding:10px">' + esc(c.name) + '</div>')
     + '<div class="no">#' + esc(String(c.number)) + '</div>'
+    + (owns(c.id) ? '<div class="ownmark">✓</div>' : '')
     + (r ? '<div class="pr' + (r.est ? " est" : "") + '" title="' + esc(r.est ? "Estimate — " + r.why : r.why) + '">'
            + (r.est ? "~" : "") + money(r.v) + '</div>' : '')
     + '</div>';
@@ -701,6 +927,219 @@ function ripPack(){
   grid.innerHTML = pull.map(c => cardTile(c, "pull")).join("");
   [...grid.children].forEach((el,i) => el.style.animationDelay = (i*70) + "ms");
   grid.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ---------------- deck builder ----------------
+   Cards are filtered by Pokémon type and nothing else — pick Water, get Water Pokémon. */
+const TYPES = ["Grass","Fire","Water","Lightning","Psychic","Fighting","Darkness","Metal","Fairy","Dragon","Colorless"];
+let deckType = "", deckHits = [], deckPage = 1, deckTotal = 0, deckBusy = false;
+
+function showBuilder(){
+  closeMore(); closeCard();
+  VIEW = "deck"; setTab();
+  if(!deckType) deckType = "Grass";
+  renderBuilder();
+  if(!deckHits.length) loadType(deckType);
+}
+function pickType(t){
+  if(deckType === t) return;
+  deckType = t; deckHits = []; deckPage = 1; deckTotal = 0;
+  renderBuilder();
+  loadType(t);
+}
+async function loadType(t, page){
+  deckBusy = true;
+  const body = document.getElementById("deckbody");
+  if(body && !page) body.innerHTML = '<div class="msg"><div class="spinner"></div>Finding ' + esc(t) + ' Pokémon…</div>';
+  try{
+    const q = 'types:' + t + ' supertype:Pokémon';
+    const d = await getJSON(API + "/cards?q=" + encodeURIComponent(q)
+      + "&orderBy=-set.releaseDate,number&pageSize=60&page=" + (page || 1));
+    if(t !== deckType) return;               // user switched type mid-flight
+    deckHits = page ? deckHits.concat(d.data) : d.data;
+    deckTotal = d.totalCount;
+    deckPage = page || 1;
+    remember(deckHits);
+  }catch(e){
+    if(body) body.innerHTML = '<div class="msg">' + esc(e.message)
+      + '<br><br><button class="btn-gold" onclick="loadType(deckType)">Try again</button></div>';
+    deckBusy = false;
+    return;
+  }
+  deckBusy = false;
+  renderBuilder();
+}
+async function moreType(){
+  if(deckBusy) return;
+  const b = document.getElementById("moretype");
+  if(b){ b.textContent = "Loading…"; b.disabled = true; }
+  await loadType(deckType, deckPage + 1);
+}
+function renderBuilder(){
+  countEl.textContent = deckCount() + " in deck";
+  app.innerHTML =
+      '<div class="types">' + TYPES.map(t =>
+        '<button class="' + (t === deckType ? "on" : "") + '" style="' + (t === deckType ? "color:" + TYPE_COLORS[t] : "") + '" onclick="pickType(\'' + t + '\')">'
+        + '<i style="background:' + TYPE_COLORS[t] + '"></i>' + t + '</button>').join("")
+    + '</div>'
+    + '<div class="tools" style="margin-top:6px"><span class="count" id="deckshown"></span>'
+    +   '<span class="legend"><b>+</b> adds to your deck &nbsp;·&nbsp; <b>✓</b> marks one you already own</span>'
+    + '</div>'
+    + '<div id="deckbody"></div>'
+    + trayHTML();
+  renderPool();
+}
+function renderPool(){
+  const body = document.getElementById("deckbody");
+  if(!body) return;
+  if(deckBusy && !deckHits.length) return;
+  const shown = document.getElementById("deckshown");
+  if(shown) shown.textContent = deckHits.length + " of " + deckTotal.toLocaleString("en-US") + " " + deckType + " Pokémon";
+  body.innerHTML = '<div class="found deckgrid">' + deckHits.map(poolTile).join("") + '</div>'
+    + (deckHits.length < deckTotal
+        ? '<button class="btn-gold more" id="moretype" onclick="moreType()">Load more '
+          + esc(deckType) + ' Pokémon</button>' : '');
+}
+function poolTile(c){
+  const s = c.set || {}, r = cardValue(c), q = inDeck(c.id), have = owns(c.id);
+  return '<div class="find" onclick="openCard(\'' + c.id + '\')" style="position:relative">'
+    + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
+    + (q ? '<div class="indeck">×' + q + ' in deck</div>' : '')
+    + (have ? '<div class="ownmark">✓</div>' : '')
+    + '<div class="fnm">' + esc(c.name) + '</div>'
+    + '<div class="fset"><span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
+    + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
+    +   '<span class="pp' + (r && r.est ? " est" : "") + '">' + (r ? (r.est ? "~" + money(r.v) : money(r.v)) : "—") + '</span></div>'
+    + '<div class="addbar">'
+    +   (q ? '<button class="add" onclick="dropFromDeck(\'' + c.id + '\',event)">−</button>' : '')
+    +   '<button class="add" onclick="addToDeck(\'' + c.id + '\',event)">+ Add' + (q ? " another" : " to deck") + '</button>'
+    +   '<button class="own ' + (have ? "yes" : "") + '" title="' + (have ? "You have this card" : "Tick if you already have it")
+    +     '" onclick="toggleOwn(\'' + c.id + '\',event)">' + (have ? "✓ Have" : "✓") + '</button>'
+    + '</div></div>';
+}
+function trayHTML(){
+  const n = deckCount();
+  const strip = deck.cards.length
+    ? deck.cards.map(e => '<span class="mini" title="' + esc(e.snap.n) + ' — click to remove one" onclick="dropFromDeck(\'' + e.id + '\',event)">'
+        + '<img src="' + e.snap.img + '" alt="' + esc(e.snap.n) + '">'
+        + (e.qty > 1 ? '<b>' + e.qty + '</b>' : '') + '</span>').join("")
+    : '<span class="empty">No cards yet — hit “+ Add to deck” on any card above.</span>';
+  return '<div class="tray"><div class="tray-in">'
+    + '<input type="text" id="deckname" placeholder="Name your deck…" value="' + esc(deck.name || "") + '"'
+    +   ' oninput="deck.name=this.value;store.set(\'pkDraft\',deck)">'
+    + '<span class="tot"><b>' + n + '</b> card' + (n === 1 ? "" : "s") + '</span>'
+    + '<span class="tot">' + money(deckValue()) + '</span>'
+    + '<div class="strip">' + strip + '</div>'
+    + '<button class="back" onclick="clearDeck()">Clear</button>'
+    + '<button class="btn-gold" onclick="saveDeck()">Save deck</button>'
+    + '</div></div>';
+}
+function deckValue(){
+  return deck.cards.reduce((t, e) => t + (e.snap.v || 0) * e.qty, 0);
+}
+
+/* ---------------- saved decks ---------------- */
+function showDecks(){
+  closeMore(); closeCard();
+  VIEW = "decks"; setTab();
+  countEl.textContent = DECKS.length + " saved deck" + (DECKS.length === 1 ? "" : "s");
+  if(!DECKS.length){
+    app.innerHTML = '<div class="hint"><h3>No saved decks yet</h3>'
+      + 'Build one in the deck builder, give it a name and hit Save.<br>'
+      + 'Everything you save stays in this browser.'
+      + '<div class="egs"><button onclick="showBuilder()">Open the deck builder</button></div></div>';
+    return;
+  }
+  app.innerHTML = '<div class="decks">' + DECKS.map(d => {
+    const n = d.cards.reduce((t,e) => t + e.qty, 0);
+    const have = d.cards.filter(e => owns(e.id)).length;
+    const val = d.cards.reduce((t,e) => t + ((e.snap && e.snap.v) || 0) * e.qty, 0);
+    return '<div class="deckcard" onclick="openDeck(\'' + d.id + '\')">'
+      + '<div class="fan">' + d.cards.slice(0,6).map(e => '<img src="' + e.snap.img + '" alt="">').join("") + '</div>'
+      + '<h3>' + esc(d.name) + '</h3>'
+      + '<div class="dmeta">' + n + ' cards &nbsp;·&nbsp; ' + money(val) + ' &nbsp;·&nbsp; saved ' + esc(d.saved) + '</div>'
+      + '<div class="dmeta"><span class="' + (have === d.cards.length ? "havepct" : "need") + '">'
+      +   'you have ' + have + ' of ' + d.cards.length + ' different cards</span></div>'
+      + '</div>';
+  }).join("") + '</div>';
+}
+function openDeck(id){
+  const d = DECKS.find(x => x.id === id); if(!d) return;
+  closeCard();
+  lastDeckId = id;
+  VIEW = "deckview"; setTab();
+  for(const e of d.cards) if(!CARDS.has(e.id) && e.snap) CARDS.set(e.id, snapToCard(e.snap));
+  const n = d.cards.reduce((t,e) => t + e.qty, 0);
+  const have = d.cards.filter(e => owns(e.id));
+  const missing = d.cards.filter(e => !owns(e.id));
+  const val = d.cards.reduce((t,e) => t + ((e.snap && e.snap.v) || 0) * e.qty, 0);
+  countEl.textContent = n + " cards";
+  app.innerHTML =
+      '<div style="margin-top:22px"><button class="back" onclick="showDecks()">&larr; All decks</button></div>'
+    + '<div class="set-head"><div style="flex:1">'
+    +   '<h1>' + esc(d.name) + '</h1>'
+    +   '<div class="stats">'
+    +     '<div>Cards<b>' + n + '</b></div>'
+    +     '<div>Different cards<b>' + d.cards.length + '</b></div>'
+    +     '<div>Deck value<b style="color:#7ee38a">' + money(val) + '</b></div>'
+    +     '<div>You already have<b class="' + (missing.length ? "need" : "havepct") + '">'
+    +       have.length + ' of ' + d.cards.length + '</b></div>'
+    +     '<div>Saved<b>' + esc(d.saved) + '</b></div>'
+    +   '</div>'
+    +   '<div class="rowbtns">'
+    +     '<button class="btn-gold" onclick="editDeck(\'' + d.id + '\')">Edit this deck</button>'
+    +     '<button class="back" onclick="deleteDeck(\'' + d.id + '\',event)">Delete</button>'
+    +   '</div>'
+    + '</div></div>'
+    + (missing.length
+        ? '<div class="warn" style="margin-top:16px"><b>Still to find — ' + missing.length + ' card'
+          + (missing.length === 1 ? "" : "s") + '</b>'
+          + missing.map(e => esc(e.snap.n) + ' <span style="opacity:.75">(' + esc(e.snap.set) + ' #' + esc(e.snap.num) + ')</span>').join(" &nbsp;·&nbsp; ")
+          + '</div>'
+        : '<div class="warn" style="margin-top:16px;border-color:rgba(126,227,138,.4);background:rgba(126,227,138,.08)">'
+          + '<b style="color:#7ee38a">You own every card in this deck.</b>Go build it.</div>')
+    + '<div class="found" style="margin-top:18px">' + d.cards.map(e => deckCardTile(e)).join("") + '</div>';
+}
+function deckCardTile(e){
+  const s = e.snap, have = owns(e.id);
+  return '<div class="find" onclick="openCard(\'' + e.id + '\')" style="position:relative">'
+    + '<img class="art" src="' + s.img + '" alt="' + esc(s.n) + '" loading="lazy">'
+    + (e.qty > 1 ? '<div class="indeck">×' + e.qty + '</div>' : '')
+    + (have ? '<div class="ownmark">✓</div>' : '')
+    + '<div class="fnm">' + esc(s.n) + '</div>'
+    + '<div class="fset"><span>' + esc(s.set) + ' · #' + esc(s.num) + '</span></div>'
+    + '<div class="frow"><span class="rr">' + esc(s.rar || "—") + '</span>'
+    +   '<span class="pp' + (s.est ? " est" : "") + '">' + (s.v != null ? (s.est ? "~" : "") + money(s.v) : "—") + '</span></div>'
+    + '<div class="addbar"><button class="own ' + (have ? "yes" : "") + '" style="flex:1"'
+    +   ' onclick="toggleOwn(\'' + e.id + '\',event)">' + (have ? "✓ You have this" : "✓ Tick if you have it") + '</button></div>'
+    + '</div>';
+}
+
+/* ---------------- collection ---------------- */
+function showOwned(){
+  closeMore(); closeCard();
+  VIEW = "owned"; setTab();
+  const list = Object.values(OWNED);
+  countEl.textContent = list.length + " card" + (list.length === 1 ? "" : "s");
+  if(!list.length){
+    app.innerHTML = '<div class="hint"><h3>Nothing ticked off yet</h3>'
+      + 'Anywhere you see a card, hit the <b style="color:#7ee38a">✓</b> to say you already have it.<br>'
+      + 'They all collect here, and saved decks show what you still need.'
+      + '<div class="egs"><button onclick="showBuilder()">Start in the deck builder</button>'
+      + '<button onclick="showSearch()">Search for a card</button></div></div>';
+    return;
+  }
+  for(const s of list) if(!CARDS.has(s.id)) CARDS.set(s.id, snapToCard(s));
+  const val = list.reduce((t,s) => t + (s.v || 0), 0);
+  app.innerHTML =
+      '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>My collection</h1>'
+    +   '<div class="stats">'
+    +     '<div>Cards ticked off<b>' + list.length + '</b></div>'
+    +     '<div>What they\'re worth<b style="color:#7ee38a">' + money(val) + '</b></div>'
+    +   '</div></div></div>'
+    + '<div class="found" style="margin-top:18px">'
+    + list.map(s => deckCardTile({id:s.id, qty:1, snap:s})).join("")
+    + '</div>';
 }
 
 /* ---------------- card modal ---------------- */
@@ -856,7 +1295,7 @@ document.addEventListener("keydown", e => {
 
 /* ---------------- misc ---------------- */
 function showSets(){
-  closeCard();
+  closeCard(); closeMore();
   if(VIEW === "search") qIn.value = "";   // the set list filters on the same box
   qIn.placeholder = "Search sets…";
   VIEW = "sets";

@@ -8,12 +8,16 @@ A single-file website listing **every Pokémon TCG set ever printed** (174 and c
 to oldest, each showing **what a sealed booster pack of it costs**. Click a set to see every card
 in it; click a card for the full card detail and market prices.
 
-Two sections, switched by the tabs in the header:
+Sections, switched from the header:
 
 - **Packs** — the set grid, and one set's cards.
 - **Card search** — search every card ever printed by name. Each *printing* comes back as its own
   result (set, number, rarity, price), and the card sheet has a printing picker so you can pin
   down the exact copy you own.
+- **View more ▾** — the menu that holds everything else, and where new sections get added:
+  - **Deck builder** — pick a Pokémon type, add cards to a deck, tick off the ones you own, save it.
+  - **My decks** — saved decks, each showing what it's worth and what you still need to find.
+  - **My collection** — every card you've ticked off, and what it's worth.
 
 ## Files
 
@@ -93,6 +97,9 @@ a bare `fetch` will look broken half the time. Without an API key the limit is 1
 | `openSet` / `renderSetBody` / `drawCards` | One set: header stats, rarity + type filters, card grid |
 | `showSearch` / `runSearch` / `renderSearch` / `findTile` | Card search: query, paging, result grid |
 | `openCard` / `priceBlock` / `selectVar` | Card sheet: identification block, printing picker, prices |
+| `showBuilder` / `pickType` / `poolTile` / `trayHTML` | Deck builder: type filter, card pool, deck tray |
+| `showDecks` / `openDeck` / `saveDeck` / `snapOf` / `snapToCard` | Saved decks and the snapshots that let them stand alone |
+| `toggleOwn` / `showOwned` | Ticking off cards you have, and the collection view |
 | `ripPack` | Booster-pack simulator — 5 commons, 3 uncommons, 1 rare with an 18% chase pull |
 
 Sorts: newest, oldest, priciest pack, A–Z, most cards. The list is deliberately **flat** (no
@@ -128,6 +135,32 @@ results, a count in the grid legend, and a yellow box in the card sheet naming t
 ("what a typical Double Rare from a recent set sells for, across 199 comparable cards"). The
 wording adapts to which fallback was used — don't claim "brand-new sets take a while to sell"
 for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a real price.
+
+### Decks and the collection
+
+All of it is `localStorage`, on one browser, no account — `pkOwned` (ticked-off cards),
+`pkDecks` (saved decks), `pkDraft` (the deck being built, saved on every change so a reload
+doesn't lose work).
+
+Every stored entry keeps a **snapshot** of the card (`snapOf`): name, set, number, rarity, both
+image URLs, and its value at save time. That's the point — a saved deck renders completely
+without re-fetching 60 cards, and still works when the API is down. `snapToCard` turns one back
+into enough of a card object for the card sheet to open after a reload, so `CARDS` gets seeded
+from snapshots whenever a deck or the collection is shown.
+
+Store both image URLs, never derive one from the other: older cards are
+`images.pokemontcg.io/<set>/<n>.png` with a `_hires` twin, newer ones are `images.scrydex.com/...`
+where no such twin exists.
+
+The deck builder filters by **Pokémon type only** — that's deliberate, not an unfinished filter
+bar. `q=types:<Type> supertype:Pokémon`, 60 at a time. `loadType` drops a response whose type is
+no longer selected, so switching type mid-request can't scramble the grid; that also means
+calling it directly with a type that isn't `deckType` silently does nothing — go through
+`pickType`.
+
+Add/tick buttons sit on top of a tile that opens the card sheet, so every one of them takes
+`event` and calls `stopPropagation`. `refreshView()` redraws whichever section is open after a
+change.
 
 ### Printing picker
 
