@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pokédex of Packs — Every Pokémon TCG Set</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#171f2b; --panel2:#1d2735;
+    --line:#2a3546; --text:#e8eef7; --dim:#93a3b8; --gold:#ffcb05; --blue:#3b6ef5;
+    --red:#ee1515; --shadow:0 10px 30px rgba(0,0,0,.45);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:
+      radial-gradient(900px 500px at 15% -10%, #1b2a4a 0%, transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, #3a1d2b 0%, transparent 55%),
+      var(--bg);
+    color:var(--text);
+    font:15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
+    min-height:100vh;
+  }
+  a{color:inherit}
+  .wrap{max-width:1400px;margin:0 auto;padding:0 20px 80px}
+
+  /* ---------- header ---------- */
+  header.top{
+    position:sticky;top:0;z-index:50;
+    background:rgba(13,17,23,.85);backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+  }
+  .top-in{max-width:1400px;margin:0 auto;padding:14px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.5px;cursor:pointer;user-select:none}
+  .pokeball{width:26px;height:26px;border-radius:50%;background:linear-gradient(180deg,var(--red) 0 47%,#fff 47% 53%,#f2f2f2 53% 100%);
+    border:2px solid #0a0a0a;position:relative;flex:0 0 auto;box-shadow:0 2px 8px rgba(238,21,21,.35)}
+  .pokeball:after{content:"";position:absolute;inset:0;margin:auto;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid #0a0a0a}
+  .logo span{background:linear-gradient(90deg,var(--gold),#ffe57a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .grow{flex:1 1 auto}
+  input[type=search], select{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);
+    border-radius:10px;padding:9px 12px;font-size:14px;outline:none;font-family:inherit;
+  }
+  input[type=search]{min-width:230px}
+  input[type=search]:focus, select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,110,245,.2)}
+  .count{color:var(--dim);font-size:13px;white-space:nowrap}
+  .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .tabs button{
+    background:none;border:0;color:var(--dim);font:inherit;font-size:14px;font-weight:600;
+    padding:6px 14px;border-radius:8px;cursor:pointer;
+  }
+  .tabs button:hover{color:var(--text)}
+  .tabs button.on{background:var(--panel2);color:var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+
+  /* ---------- card search ---------- */
+  .hint{color:var(--dim);text-align:center;padding:70px 20px}
+  .hint h3{color:var(--text);font-size:22px;margin:0 0 8px}
+  .hint .egs{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:18px}
+  .hint .egs button{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;
+    padding:7px 14px;border-radius:999px;cursor:pointer;
+  }
+  .hint .egs button:hover{border-color:var(--gold);color:var(--gold)}
+  .found{display:grid;grid-template-columns:repeat(auto-fill,minmax(168px,1fr));gap:16px;margin-top:18px}
+  .find{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:12px;padding:10px;cursor:pointer;transition:transform .15s ease,border-color .15s;
+  }
+  .find:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:var(--shadow)}
+  .find img.art{width:100%;border-radius:7px;display:block;aspect-ratio:245/342;object-fit:cover;background:var(--panel)}
+  .find .fnm{font-weight:700;font-size:14px;margin:9px 0 3px;line-height:1.2}
+  .find .fset{color:var(--dim);font-size:11.5px;display:flex;align-items:center;gap:5px;line-height:1.3}
+  .find .fset img{width:14px;height:14px;object-fit:contain;flex:0 0 auto}
+  .find .frow{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-top:7px}
+  .find .frow .rr{color:var(--dim);font-size:11px}
+  .find .frow .pp{color:#7ee38a;font-weight:800;font-size:15px}
+  .more{display:block;margin:26px auto 0}
+
+  /* ---------- printing picker ---------- */
+  .idcard{
+    background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 14px;
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;
+  }
+  .idcard div small{display:block;color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.6px}
+  .idcard div b{font-size:14px;display:flex;align-items:center;gap:5px}
+  .idcard div b img{width:16px;height:16px;object-fit:contain}
+  .vars{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+  .vars button{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;
+    padding:7px 13px;border-radius:9px;cursor:pointer;text-align:left;
+  }
+  .vars button:hover{border-color:var(--gold)}
+  .vars button.on{border-color:var(--gold);background:rgba(255,203,5,.10);color:var(--gold);font-weight:700}
+  .vars button small{display:block;font-size:11px;color:var(--dim);font-weight:400}
+  .vars button.on small{color:var(--gold);opacity:.8}
+  .bigprice{
+    display:flex;align-items:baseline;gap:10px;background:var(--panel2);border:1px solid var(--line);
+    border-radius:12px;padding:12px 16px;margin-bottom:10px;
+  }
+  .bigprice b{font-size:30px;color:#7ee38a;font-weight:800;line-height:1}
+  .bigprice span{color:var(--dim);font-size:12px}
+
+  /* ---------- set grid ---------- */
+  .sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:28px}
+  .set{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));
+    border:1px solid var(--line);border-radius:14px;padding:16px 14px 13px;cursor:pointer;
+    display:flex;flex-direction:column;gap:10px;transition:transform .16s ease, border-color .16s, box-shadow .16s;
+    text-align:center;
+  }
+  .set:hover{transform:translateY(-4px);border-color:var(--gold);box-shadow:var(--shadow)}
+  .set .logo-box{height:74px;display:flex;align-items:center;justify-content:center}
+  .set .logo-box img{max-height:74px;max-width:100%;object-fit:contain;filter:drop-shadow(0 3px 6px rgba(0,0,0,.5))}
+  .set .nm{font-weight:700;font-size:15px;line-height:1.25;display:flex;align-items:center;justify-content:center;gap:6px}
+  .set .nm img{width:16px;height:16px;object-fit:contain}
+  .set .ser{color:var(--dim);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:-6px}
+  .set .meta{color:var(--dim);font-size:12px;display:flex;justify-content:center;gap:8px}
+  .set .meta b{color:#cbd6e6;font-weight:600}
+  .set .val{
+    margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--dim);
+  }
+  .set .val b{color:#7ee38a;font-size:16px;font-weight:800}
+  .set .val .per{font-size:11px}
+  .set .val .pending{font-size:11px;opacity:.6;font-style:italic}
+
+  /* ---------- set detail ---------- */
+  .back{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;
+    padding:9px 14px;cursor:pointer;font-size:14px;font-family:inherit;
+  }
+  .back:hover{border-color:var(--gold);color:var(--gold)}
+  .set-head{display:flex;gap:24px;align-items:center;flex-wrap:wrap;margin:26px 0 10px;
+    background:linear-gradient(180deg,var(--panel2),transparent);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+  .set-head img.big{max-height:96px;max-width:300px;object-fit:contain}
+  .set-head h1{margin:0 0 6px;font-size:26px}
+  .stats{display:flex;gap:18px;flex-wrap:wrap;color:var(--dim);font-size:13px}
+  .stats b{color:var(--text);display:block;font-size:15px;font-weight:700}
+  .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 4px}
+  .btn-gold{
+    background:linear-gradient(180deg,#ffd633,#f0b90b);color:#20180a;border:0;border-radius:10px;
+    padding:10px 16px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;
+    box-shadow:0 4px 14px rgba(240,185,11,.28);
+  }
+  .btn-gold:hover{filter:brightness(1.08)}
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px;margin-top:18px;scroll-margin-top:140px}
+  .card{
+    cursor:pointer;border-radius:10px;position:relative;transition:transform .15s ease;
+    background:var(--panel);aspect-ratio:245/342;overflow:hidden;border:1px solid var(--line);
+  }
+  .card img{width:100%;height:100%;object-fit:cover;display:block}
+  .card:hover{transform:translateY(-5px) scale(1.03);z-index:2;box-shadow:var(--shadow)}
+  .card .no{
+    position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.72);border-radius:6px;
+    padding:2px 6px;font-size:11px;color:#fff;opacity:0;transition:opacity .15s;
+  }
+  .card:hover .no{opacity:1}
+  .card .pr{
+    position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.78);border-radius:6px;
+    padding:2px 6px;font-size:11px;font-weight:700;color:#7ee38a;
+  }
+
+  /* ---------- modal ---------- */
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(5,8,13,.82);backdrop-filter:blur(6px);
+    display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
+  .sheet{
+    background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
+    border-radius:18px;max-width:900px;width:100%;padding:24px;display:flex;gap:26px;flex-wrap:wrap;
+    box-shadow:var(--shadow);position:relative;
+  }
+  .sheet .x{position:absolute;right:14px;top:12px;background:none;border:0;color:var(--dim);font-size:26px;cursor:pointer;line-height:1}
+  .sheet .x:hover{color:#fff}
+  .sheet img.hero{width:300px;max-width:100%;border-radius:12px;box-shadow:0 14px 40px rgba(0,0,0,.6);align-self:flex-start}
+  .info{flex:1 1 320px;min-width:280px}
+  .info h2{margin:0 0 4px;font-size:26px}
+  .sub{color:var(--dim);font-size:13px;margin-bottom:14px}
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+  .chip{background:var(--panel2);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:12px}
+  .chip.t{border-color:transparent;color:#111;font-weight:700}
+  .blk{border-top:1px solid var(--line);padding:12px 0}
+  .blk h4{margin:0 0 6px;font-size:13px;letter-spacing:1px;text-transform:uppercase;color:var(--gold)}
+  .atk{display:flex;justify-content:space-between;gap:12px;margin-bottom:8px}
+  .atk .nm{font-weight:700}
+  .atk .txt{color:var(--dim);font-size:13px}
+  .atk .dmg{font-weight:800;font-size:18px}
+  .prices{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+  .price{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 10px}
+  .price small{display:block;color:var(--dim);font-size:11px;text-transform:capitalize}
+  .price b{font-size:17px;color:#7ee38a}
+
+  .msg{padding:60px 0;text-align:center;color:var(--dim)}
+  .spinner{width:34px;height:34px;border:3px solid var(--line);border-top-color:var(--gold);border-radius:50%;
+    margin:0 auto 14px;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .pull{animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
+  @keyframes pop{from{opacity:0;transform:translateY(24px) scale(.9) rotate(-3deg)}to{opacity:1;transform:none}}
+  footer{color:var(--dim);font-size:12px;text-align:center;padding:40px 0 10px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="logo" onclick="showSets()"><div class="pokeball"></div><span>Pokédex of Packs</span></div>
+    <nav class="tabs">
+      <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
+      <button id="tab-cards" onclick="showSearch()">Card search</button>
+    </nav>
+    <div class="grow"></div>
+    <input type="search" id="q" placeholder="Search sets…" autocomplete="off">
+    <select id="sort">
+      <option value="new">Newest first</option>
+      <option value="old">Oldest first</option>
+      <option value="val">Priciest pack</option>
+      <option value="az">A to Z</option>
+      <option value="size">Most cards</option>
+    </select>
+    <span class="count" id="count"></span>
+  </div>
+</header>
+
+<div class="wrap" id="app">
+  <div class="msg"><div class="spinner"></div>Loading every Pokémon set…</div>
+</div>
+
+<footer>Cards &amp; images from the <a href="https://pokemontcg.io" target="_blank" rel="noopener">Pokémon TCG API</a>; sealed pack prices are TCGplayer market data via <a href="https://tcgcsv.com" target="_blank" rel="noopener">tcgcsv.com</a>, as of <span id="snap"></span>. Card images © The Pokémon Company.</footer>
+
+<script>
+const API = "https://api.pokemontcg.io/v2";
+
+/* Sealed booster-pack prices (TCGplayer market, via tcgcsv.com). Baked in because tcgcsv
+   sends no CORS headers, so the browser can't fetch them — refresh with update-pack-prices.py.
+   { d: snapshot date, s: { setId: {p: pack, b: booster box, e: elite trainer box} } } */
+const PACK_PRICES = {"d":"2026-09-12","s":{"base1":{"p":865.18,"b":100000.0},"base2":{"p":292.24,"b":34400.0},"base3":{"p":332.03},"base4":{"p":426.24},"base5":{"p":325.48,"b":36000.0},"gym1":{"p":279.02},"gym2":{"p":334.98},"neo1":{"p":639.99},"neo2":{"p":524.99},"neo3":{"p":889.99},"neo4":{"p":1688.99},"ecard1":{"p":4800.0},"ex1":{"p":799.99},"ex3":{"p":1250.0},"ex4":{"p":800.0},"ex5":{"p":800.0,"b":52400.0},"ex6":{"p":1009.96},"ex8":{"p":3999.99},"ex9":{"p":1000.0},"ex12":{"p":1999.99},"ex13":{"p":1899.99},"ex15":{"p":2999.99},"ex16":{"p":949.99},"dp1":{"p":195.0},"dp2":{"p":339.83},"dp3":{"p":495.0},"dp4":{"p":323.33},"dp6":{"p":400.13},"dp7":{"p":545.27},"pl1":{"p":319.49},"pl2":{"p":370.0},"pl3":{"p":716.66},"pl4":{"p":464.49},"hgss2":{"p":414.04},"col1":{"p":1050.66},"bw1":{"p":203.49},"bw2":{"p":95.98},"bw3":{"p":169.13},"bw4":{"p":367.06},"bw5":{"p":380.0},"bw6":{"p":350.26},"bw7":{"p":234.39},"bw8":{"p":530.62},"bw9":{"p":290.0},"bw10":{"p":250.99},"xy1":{"p":125.13,"b":3728.0},"xy2":{"p":161.18,"b":12000.0},"xy3":{"p":76.24,"b":4717.5},"xy4":{"p":231.3},"xy5":{"p":63.93,"b":3799.99},"dc1":{"p":429.59},"xy6":{"p":76.54,"b":4280.92,"e":7899.99},"xy7":{"p":140.02,"b":8233.99},"xy8":{"p":60.45,"b":3223.44,"e":1499.0},"xy9":{"p":47.01,"b":4650.0,"e":1099.99},"g1":{"p":308.82,"e":2999.19},"xy10":{"p":44.67,"b":2754.99,"e":1549.0},"xy11":{"p":30.95,"b":1262.5,"e":1800.0},"xy12":{"p":64.42,"b":2539.67,"e":641.25},"sm1":{"p":22.31,"b":973.15,"e":247.93},"sm2":{"p":35.82,"b":1824.5,"e":433.38},"sm3":{"p":32.09,"b":1243.1,"e":324.46},"sm35":{"p":109.15,"e":1016.29},"sm4":{"p":18.63,"b":680.35,"e":220.66},"sm5":{"p":49.67,"b":1450.0,"e":711.99},"sm6":{"p":11.92,"b":1647.98,"e":686.16},"sm7":{"p":62.86,"b":2487.85,"e":2091.3},"sm75":{"p":104.04,"e":1256.49},"sm8":{"p":58.03,"b":1484.36,"e":681.55},"sm9":{"p":295.14,"b":11725.0,"e":4000.0},"det1":{"p":19.94},"sm10":{"p":67.78,"b":2544.31,"e":2599.0},"sm11":{"p":77.72,"b":3135.7,"e":1719.9},"sm115":{"p":48.53,"e":562.12},"sm12":{"p":74.29,"b":4216.67,"e":1874.5},"swsh1":{"p":10.71,"b":689.62,"e":161.86},"swsh2":{"p":11.26,"b":486.27,"e":341.35},"swsh3":{"p":9.91,"b":371.51,"e":111.82},"swsh35":{"p":19.35,"e":217.97},"swsh4":{"p":10.74,"b":311.85,"e":136.53},"swsh45":{"p":15.65,"e":148.05},"swsh5":{"p":9.4,"b":292.3,"e":247.6},"swsh6":{"p":11.65,"b":489.67,"e":142.81},"swsh7":{"p":44.61,"b":1595.0,"e":506.78},"cel25":{"p":34.94,"e":362.29},"swsh8":{"p":19.33,"b":968.89,"e":327.59},"swsh9":{"p":16.79,"b":582.81,"e":161.85},"swsh10":{"p":10.54,"b":249.99,"e":143.64},"pgo":{"p":12.78,"e":170.51},"swsh11":{"p":18.31,"b":732.1,"e":193.66},"swsh12":{"p":15.09,"b":519.12,"e":160.54},"swsh12pt5":{"p":25.52,"e":320.81},"sv1":{"p":8.93,"b":292.45,"e":133.67},"sv2":{"p":15.78,"b":481.25,"e":218.29},"sv3":{"p":12.98,"b":373.61,"e":286.27},"sv3pt5":{"p":28.26,"e":554.55},"sv4":{"p":8.41,"b":276.17,"e":134.82},"sv4pt5":{"p":23.72,"e":444.27},"sv5":{"p":10.96,"b":316.18,"e":125.27},"sv6":{"p":9.2,"b":196.88,"e":103.9},"sv6pt5":{"p":14.82,"e":114.72},"sv7":{"p":10.56,"b":246.17,"e":154.95},"sv8":{"p":7.9,"b":189.81,"e":122.93},"sv8pt5":{"p":14.24,"e":146.88},"sv9":{"p":6.83,"b":244.27,"e":140.13},"sv10":{"p":9.02,"b":301.88,"e":115.97},"zsv10pt5":{"p":14.4,"e":170.74},"rsv10pt5":{"p":13.85,"e":152.78},"me1":{"p":8.37,"b":290.73,"e":121.86},"me2":{"p":12.68,"b":397.81,"e":154.26},"me2pt5":{"p":13.74,"e":159.22},"me3":{"p":5.29,"b":173.34,"e":62.23},"me4":{"p":5.31,"b":196.82,"e":62.1},"me5":{"p":5.9,"b":197.59,"e":70.36}}}; // end-pack-prices
+const TYPE_COLORS = {
+  Grass:"#7dc96a", Fire:"#ff8b47", Water:"#54a9f5", Lightning:"#ffd84d", Psychic:"#c07bf0",
+  Fighting:"#d9713c", Darkness:"#7d8b9e", Metal:"#b8c2cc", Fairy:"#f79ac9", Dragon:"#c9b45a",
+  Colorless:"#dcdcdc"
+};
+const app = document.getElementById("app");
+const qIn = document.getElementById("q");
+const sortIn = document.getElementById("sort");
+const countEl = document.getElementById("count");
+
+let SETS = [];
+let VIEW = "sets";           // "sets" | "set" | "search"
+let current = null;          // current set object
+let currentCards = [];       // cards of the current set
+const cardCache = new Map(); // setId -> cards[]
+const CARDS = new Map();     // every card seen this session, id -> card (what openCard reads)
+
+function remember(cards){ for(const c of cards) CARDS.set(c.id, c); }
+
+/* ---------------- fetching ---------------- */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+/* The free pokemontcg.io tier throws intermittent 500s, so every call retries. */
+async function getJSON(url, tries){
+  tries = tries || 5;
+  let last = "";
+  for(let i=0;i<tries;i++){
+    try{
+      const r = await fetch(url);
+      if(r.ok) return await r.json();
+      if(r.status === 429){ last = "rate limited"; await sleep(2000 * (i+1)); continue; }
+      if(r.status >= 500){ last = "server error " + r.status; await sleep(300 * (i+1)); continue; }
+      throw new Error("Request failed (" + r.status + ")");
+    }catch(e){
+      if(/^Request failed/.test(e.message)) throw e;
+      last = e.message || "network error";
+      await sleep(500 * (i+1));
+    }
+  }
+  throw new Error("The Pokémon TCG API isn't answering right now (" + last + ").");
+}
+async function loadSets(){
+  try{
+    const cached = localStorage.getItem("pkSets");
+    if(cached){
+      const o = JSON.parse(cached);
+      if(Date.now() - o.t < 864e5){ SETS = o.d; renderSets(); return; }
+    }
+  }catch(e){}
+  try{
+    const d = await getJSON(API + "/sets?pageSize=250");
+    SETS = d.data;
+    try{ localStorage.setItem("pkSets", JSON.stringify({t:Date.now(), d:SETS})); }catch(e){}
+    renderSets();
+  }catch(e){
+    app.innerHTML = '<div class="msg">' + esc(e.message)
+      + '<br><br>(This site pulls live data from pokemontcg.io — check you\'re online.)'
+      + '<br><br><button class="btn-gold" onclick="loadSets()">Try again</button></div>';
+  }
+}
+async function loadCards(setId){
+  if(cardCache.has(setId)) return cardCache.get(setId);
+  let all = [], page = 1;
+  while(true){
+    const d = await getJSON(API + "/cards?q=set.id:" + encodeURIComponent(setId) + "&pageSize=250&page=" + page);
+    all = all.concat(d.data);
+    if(d.data.length < 250) break;
+    page++;
+  }
+  all.sort((a,b)=>{
+    const na = parseInt(a.number,10), nb = parseInt(b.number,10);
+    if(isNaN(na) || isNaN(nb)) return String(a.number).localeCompare(String(b.number));
+    return na - nb || String(a.number).localeCompare(String(b.number));
+  });
+  cardCache.set(setId, all);
+  remember(all);
+  return all;
+}
+
+/* ---------------- card search ----------------
+   Searches every card ever printed by name. Each result is one specific printing, because
+   knowing which one you own is the whole point — the same Charizard exists in dozens of sets
+   at wildly different values. */
+const PAGE = 60;
+let searchTerm = "", searchPage = 1, searchTotal = 0, searchHits = [], searchBusy = false, searchSeq = 0;
+
+function showSearch(){
+  closeCard();
+  VIEW = "search";
+  setTab();
+  qIn.placeholder = "Search every card…";
+  qIn.value = searchTerm;
+  countEl.textContent = searchTotal ? searchTotal.toLocaleString("en-US") + " printings" : "";
+  renderSearch();
+  qIn.focus();
+}
+function setTab(){
+  document.getElementById("tab-packs").classList.toggle("on", VIEW !== "search");
+  document.getElementById("tab-cards").classList.toggle("on", VIEW === "search");
+  sortIn.style.display = VIEW === "sets" ? "" : "none";
+}
+function exampleSearch(t){ qIn.value = t; runSearch(t); }
+
+let typeTimer = null;
+function onSearchTyping(){
+  clearTimeout(typeTimer);
+  const t = qIn.value.trim();
+  typeTimer = setTimeout(() => runSearch(t), 350);
+}
+async function runSearch(term){
+  searchTerm = term;
+  if(term.length < 2){ searchHits = []; searchTotal = 0; renderSearch(); return; }
+  const seq = ++searchSeq;
+  searchPage = 1; searchBusy = true;
+  app.innerHTML = '<div class="msg"><div class="spinner"></div>Looking for “' + esc(term) + '”…</div>';
+  try{
+    const d = await fetchPage(term, 1);
+    if(seq !== searchSeq) return;            // a newer search already started
+    searchHits = d.data; searchTotal = d.totalCount;
+    remember(d.data);
+  }catch(e){
+    if(seq !== searchSeq) return;
+    app.innerHTML = '<div class="msg">' + esc(e.message)
+      + '<br><br><button class="btn-gold" onclick="runSearch(' + JSON.stringify(term).replace(/"/g, "&quot;") + ')">Try again</button></div>';
+    searchBusy = false;
+    return;
+  }
+  searchBusy = false;
+  renderSearch();
+}
+function fetchPage(term, page){
+  // quoted wildcards, so "mr. mime" and partial words both work
+  const q = 'name:"*' + term.replace(/["\\]/g, " ") + '*"';
+  return getJSON(API + "/cards?q=" + encodeURIComponent(q)
+    + "&orderBy=-set.releaseDate,number&pageSize=" + PAGE + "&page=" + page);
+}
+async function moreResults(){
+  if(searchBusy) return;
+  searchBusy = true;
+  const btn = document.getElementById("more");
+  if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
+  try{
+    const d = await fetchPage(searchTerm, searchPage + 1);
+    searchPage++;
+    searchHits = searchHits.concat(d.data);
+    remember(d.data);
+    renderSearch();
+  }catch(e){
+    if(btn){ btn.textContent = "Couldn't load more — retry"; btn.disabled = false; }
+  }
+  searchBusy = false;
+}
+function renderSearch(){
+  VIEW = "search";
+  setTab();
+  if(!searchTerm || searchTerm.length < 2){
+    countEl.textContent = "";
+    app.innerHTML = '<div class="hint"><h3>Find any card ever printed</h3>'
+      + 'Type a name above. Every printing comes back separately — set, card number and rarity —<br>'
+      + 'so you can pick the exact one you own and see what it is worth.'
+      + '<div class="egs">'
+      + ['Charizard','Pikachu','Umbreon','Mew','Rayquaza','Mr. Mime'].map(n =>
+          '<button onclick="exampleSearch(\'' + n + '\')">' + n + '</button>').join("")
+      + '</div></div>';
+    return;
+  }
+  countEl.textContent = searchTotal.toLocaleString("en-US") + " printing" + (searchTotal === 1 ? "" : "s");
+  if(!searchHits.length){
+    app.innerHTML = '<div class="hint"><h3>No card called “' + esc(searchTerm) + '”</h3>Check the spelling, or try part of the name.</div>';
+    return;
+  }
+  const sets = [...new Set(searchHits.map(c => c.set && c.set.name).filter(Boolean))].sort();
+  app.innerHTML =
+      '<div class="tools">'
+    +   '<select id="fset"><option value="">All sets</option>'
+    +     sets.map(s => '<option' + (s === lastSetFilter ? ' selected' : '') + '>' + esc(s) + '</option>').join("")
+    +   '</select>'
+    +   '<span class="count" id="fshown"></span>'
+    + '</div>'
+    + '<div class="found" id="found"></div>'
+    + (searchHits.length < searchTotal
+        ? '<button class="btn-gold more" id="more" onclick="moreResults()">Load more ('
+          + (searchTotal - searchHits.length).toLocaleString("en-US") + ' left)</button>'
+        : '');
+  document.getElementById("fset").addEventListener("change", drawFound);
+  drawFound();
+}
+let lastSetFilter = "";
+function drawFound(){
+  const sel = document.getElementById("fset");
+  lastSetFilter = sel ? sel.value : "";
+  const list = lastSetFilter ? searchHits.filter(c => c.set && c.set.name === lastSetFilter) : searchHits;
+  document.getElementById("fshown").textContent =
+    "showing " + list.length + " of " + searchTotal.toLocaleString("en-US");
+  document.getElementById("found").innerHTML = list.map(findTile).join("")
+    || '<div class="msg" style="grid-column:1/-1">Nothing from that set in the results loaded so far.</div>';
+}
+function findTile(c){
+  const s = c.set || {};
+  const p = cardPrice(c);
+  const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
+  return '<div class="find" onclick="openCard(\'' + c.id + '\')">'
+    + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
+    + '<div class="fnm">' + esc(c.name) + '</div>'
+    + '<div class="fset">' + sym + '<span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
+    + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
+    + '<span class="pp">' + (p != null ? money(p) : "—") + '</span></div>'
+    + '</div>';
+}
+
+/* ---------------- prices ----------------
+   What a sealed booster pack of the set costs, from PACK_PRICES above. Card-level
+   prices come from the card data itself, so they cost no extra requests. */
+function packPrice(id){
+  const p = PACK_PRICES.s[id];
+  return p && p.p != null ? p.p : null;
+}
+function priceLabel(id){
+  const p = packPrice(id);
+  if(p == null) return '<span class="pending">not sold in packs</span>';
+  return '<b>' + money(p) + '</b> <span class="per">a pack</span>';
+}
+function money(n){
+  if(n == null) return "—";
+  if(n >= 1000) return "$" + Math.round(n).toLocaleString("en-US");
+  return "$" + n.toFixed(2);
+}
+
+function cardPrice(c){
+  const p = c.tcgplayer && c.tcgplayer.prices;
+  if(!p) return null;
+  // cheapest printing of the card — avoids 1st-edition variants inflating the set
+  const vals = Object.values(p).map(v => v && v.market).filter(v => typeof v === "number" && v > 0);
+  return vals.length ? Math.min(...vals) : null;
+}
+function priceStats(cards){
+  let total = 0, n = 0, hi = 0, hiName = "";
+  for(const c of cards){
+    const v = cardPrice(c);
+    if(v == null) continue;
+    total += v; n++;
+    if(v > hi){ hi = v; hiName = c.name; }
+  }
+  return {v:total, n:n, hi:hi, hiName:hiName, of:cards.length};
+}
+
+/* ---------------- set list ---------------- */
+function sortSets(list){
+  const m = sortIn.value;
+  const byDate = s => s.releaseDate || "0000/00/00";
+  const c = [...list];
+  if(m === "new")  c.sort((a,b)=> byDate(b).localeCompare(byDate(a)));
+  if(m === "old")  c.sort((a,b)=> byDate(a).localeCompare(byDate(b)));
+  if(m === "az")   c.sort((a,b)=> a.name.localeCompare(b.name));
+  if(m === "size") c.sort((a,b)=> (b.total||0) - (a.total||0));
+  if(m === "val"){
+    const v = s => { const p = packPrice(s.id); return p == null ? -1 : p; };
+    c.sort((a,b)=> v(b) - v(a));
+  }
+  return c;
+}
+function renderSets(){
+  VIEW = "sets";
+  setTab();
+  const term = qIn.value.trim().toLowerCase();
+  let list = SETS.filter(s =>
+    !term || s.name.toLowerCase().includes(term) || (s.series||"").toLowerCase().includes(term) ||
+    (s.ptcgoCode||"").toLowerCase().includes(term) || s.id.toLowerCase().includes(term)
+  );
+  countEl.textContent = list.length + " of " + SETS.length + " sets";
+  if(!list.length){ app.innerHTML = '<div class="msg">No sets match “' + esc(qIn.value) + '”.</div>'; return; }
+  list = sortSets(list);
+  app.innerHTML = '<div class="sets">' + list.map(setTile).join("") + '</div>';
+  window.scrollTo({top:0});
+}
+function setTile(s){
+  const logo = s.images && s.images.logo
+    ? '<img src="' + s.images.logo + '" alt="" loading="lazy">'
+    : '<span style="color:var(--dim)">' + esc(s.name) + '</span>';
+  const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
+  return '<div class="set" onclick="openSet(\'' + s.id + '\')">'
+    + '<div class="logo-box">' + logo + '</div>'
+    + '<div class="nm">' + sym + esc(s.name) + '</div>'
+    + '<div class="ser">' + esc(s.series || "—") + '</div>'
+    + '<div class="meta"><span>' + fmtDate(s.releaseDate) + '</span><span><b>' + (s.total || s.printedTotal || "?") + '</b> cards</span></div>'
+    + '<div class="val" id="v-' + s.id + '">' + priceLabel(s.id) + '</div>'
+    + '</div>';
+}
+
+/* ---------------- set detail ---------------- */
+async function openSet(id){
+  const s = SETS.find(x => x.id === id); if(!s) return;
+  if(VIEW === "search") qIn.value = "";   // that box held a card name, not a set filter
+  current = s; VIEW = "set";
+  setTab();
+  qIn.placeholder = "Search sets…";
+  app.innerHTML = setHeader(s) + '<div class="msg"><div class="spinner"></div>Opening the pack…</div>';
+  window.scrollTo({top:0});
+  try{
+    currentCards = await loadCards(id);
+    renderSetBody();
+  }catch(e){
+    app.innerHTML = setHeader(s) + '<div class="msg">' + esc(e.message)
+      + '<br><br><button class="btn-gold" onclick="openSet(\'' + s.id + '\')">Try again</button></div>';
+  }
+}
+function setHeader(s, st){
+  const sealed = PACK_PRICES.s[s.id] || {};
+  let val = '<div>Booster pack<b style="color:#7ee38a">'
+    + (sealed.p != null ? money(sealed.p) : '<span style="color:var(--dim);font-weight:400">never sold in packs</span>')
+    + '</b></div>';
+  if(sealed.b != null) val += '<div>Booster box<b style="color:#7ee38a">' + money(sealed.b) + '</b></div>';
+  if(sealed.e != null) val += '<div>Elite Trainer Box<b style="color:#7ee38a">' + money(sealed.e) + '</b></div>';
+  if(st && st.n){
+    val += '<div>Priciest card<b>' + money(st.hi)
+        +  ' <span style="font-size:12px;color:var(--dim);font-weight:400">' + esc(st.hiName) + '</span></b></div>';
+  }
+  return '<div style="margin-top:22px"><button class="back" onclick="showSets()">&larr; All sets</button></div>'
+    + '<div class="set-head">'
+    +   (s.images && s.images.logo ? '<img class="big" src="' + s.images.logo + '" alt="">' : '')
+    +   '<div><h1>' + esc(s.name) + '</h1>'
+    +     '<div class="stats">'
+    +       '<div>Series<b>' + esc(s.series || "—") + '</b></div>'
+    +       '<div>Released<b>' + fmtDate(s.releaseDate) + '</b></div>'
+    +       '<div>Cards<b>' + (s.total || "?")
+    +         (s.printedTotal && s.printedTotal !== s.total ? ' <span style="font-size:12px;color:var(--dim);font-weight:400">(' + s.printedTotal + ' printed + secrets)</span>' : '')
+    +       '</b></div>'
+    +       (s.ptcgoCode ? '<div>Set code<b>' + esc(s.ptcgoCode) + '</b></div>' : '')
+    +       val
+    +     '</div></div></div>';
+}
+function renderSetBody(){
+  const rarities = [...new Set(currentCards.map(c => c.rarity).filter(Boolean))].sort();
+  const types = [...new Set(currentCards.flatMap(c => c.types || []))].sort();
+  countEl.textContent = currentCards.length + " cards";
+  // full card data is already here, so price the set exactly and refresh the cache
+  const st = priceStats(currentCards);
+  app.innerHTML = setHeader(current, st)
+    + '<div class="tools">'
+    +   '<input type="search" id="cq" placeholder="Search cards in this set…">'
+    +   '<select id="cr"><option value="">All rarities</option>' + rarities.map(r => '<option>' + esc(r) + '</option>').join("") + '</select>'
+    +   (types.length ? '<select id="ct"><option value="">All types</option>' + types.map(t => '<option>' + esc(t) + '</option>').join("") + '</select>' : '')
+    +   '<button class="btn-gold" onclick="ripPack()">Open a booster pack</button>'
+    +   '<span class="count" id="shown"></span>'
+    + '</div>'
+    + '<div class="cards" id="grid"></div>';
+  ["cq","cr","ct"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("input", drawCards); });
+  drawCards();
+}
+function drawCards(){
+  const t  = (document.getElementById("cq") || {}).value || "";
+  const r  = (document.getElementById("cr") || {}).value || "";
+  const ty = (document.getElementById("ct") || {}).value || "";
+  const term = t.trim().toLowerCase();
+  const list = currentCards.filter(c =>
+    (!term || c.name.toLowerCase().includes(term) || String(c.number).toLowerCase() === term || (c.artist||"").toLowerCase().includes(term)) &&
+    (!r || c.rarity === r) &&
+    (!ty || (c.types || []).includes(ty))
+  );
+  document.getElementById("shown").textContent = list.length + " / " + currentCards.length + " cards";
+  document.getElementById("grid").innerHTML = list.map(c => cardTile(c)).join("")
+    || '<div class="msg" style="grid-column:1/-1">Nothing matches that filter.</div>';
+}
+function cardTile(c, cls){
+  const img = c.images && c.images.small ? c.images.small : "";
+  const p = cardPrice(c);
+  return '<div class="card ' + (cls || "") + '" onclick="openCard(\'' + c.id + '\')" title="' + esc(c.name) + '">'
+    + (img ? '<img src="' + img + '" alt="' + esc(c.name) + '" loading="lazy">' : '<div style="padding:10px">' + esc(c.name) + '</div>')
+    + '<div class="no">#' + esc(String(c.number)) + '</div>'
+    + (p != null ? '<div class="pr">' + money(p) + '</div>' : '')
+    + '</div>';
+}
+
+/* ---------------- booster pack simulator ---------------- */
+function ripPack(){
+  const pool = currentCards.filter(c => c.rarity);
+  if(pool.length < 4){ alert("This set doesn't have enough rarity data to simulate a pack."); return; }
+  const by = p => pool.filter(p);
+  const commons   = by(c => /^Common/i.test(c.rarity));
+  const uncommons = by(c => /^Uncommon/i.test(c.rarity));
+  const rares     = by(c => /rare/i.test(c.rarity));
+  const chase     = by(c => /(Ultra|Secret|Illustration|Hyper|Rainbow|Special|Amazing|Radiant|Shiny|Gold)/i.test(c.rarity));
+  const pick = (arr, n) => {
+    const out = [], src = arr.length ? arr : pool;
+    for(let i=0;i<n;i++) out.push(src[Math.floor(Math.random()*src.length)]);
+    return out;
+  };
+  const hit = (chase.length && Math.random() < 0.18) ? pick(chase,1) : pick(rares.length ? rares : pool, 1);
+  const pull = [...pick(commons,5), ...pick(uncommons,3), ...hit];
+  const grid = document.getElementById("grid");
+  document.getElementById("shown").textContent = "your pull — 9 cards";
+  grid.innerHTML = pull.map(c => cardTile(c, "pull")).join("");
+  [...grid.children].forEach((el,i) => el.style.animationDelay = (i*70) + "ms");
+  grid.scrollIntoView({behavior:"smooth", block:"start"});
+}
+
+/* ---------------- card modal ---------------- */
+let modalCard = null, modalVar = "";
+
+// what each TCGplayer printing actually looks like, so you can tell which one is in your hand
+const VARIANTS = {
+  normal:              ["Normal", "no shine — plain card stock"],
+  holofoil:            ["Holofoil", "the artwork itself is shiny"],
+  reverseHolofoil:     ["Reverse holofoil", "shiny everywhere except the artwork"],
+  "1stEdition":        ["1st Edition", "has the 1st Edition stamp beside the art"],
+  "1stEditionNormal":  ["1st Edition", "1st Edition stamp, no shine"],
+  "1stEditionHolofoil":["1st Edition holofoil", "1st Edition stamp and shiny art"],
+  unlimited:           ["Unlimited", "no 1st Edition stamp"],
+  unlimitedHolofoil:   ["Unlimited holofoil", "shiny art, no 1st Edition stamp"]
+};
+function varLabel(k){
+  if(VARIANTS[k]) return VARIANTS[k][0];
+  return k.replace(/([A-Z])/g, " $1").replace(/^./, m => m.toUpperCase());
+}
+function varNote(k){ return VARIANTS[k] ? VARIANTS[k][1] : ""; }
+
+function selectVar(k){
+  modalVar = k;
+  const pane = document.getElementById("pricepane");
+  if(pane) pane.innerHTML = priceBlock(modalCard);
+}
+
+function openCard(id){
+  const c = CARDS.get(id); if(!c) return;
+  modalCard = c;
+  const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
+  const withPrice = Object.keys(tp).filter(k => tp[k] && tp[k].market != null);
+  modalVar = withPrice[0] || Object.keys(tp)[0] || "";
+  const typeChips = (c.types || []).map(t => '<span class="chip t" style="background:' + (TYPE_COLORS[t] || "#ccc") + '">' + esc(t) + '</span>').join("");
+  const subChips  = (c.subtypes || []).map(s => '<span class="chip">' + esc(s) + '</span>').join("");
+
+  let body = "";
+  if(c.abilities && c.abilities.length){
+    body += '<div class="blk"><h4>' + esc(c.abilities[0].type || "Ability") + '</h4>'
+      + c.abilities.map(a => '<div class="atk"><div><div class="nm">' + esc(a.name) + '</div><div class="txt">' + esc(a.text || "") + '</div></div></div>').join("")
+      + '</div>';
+  }
+  if(c.attacks && c.attacks.length){
+    body += '<div class="blk"><h4>Attacks</h4>' + c.attacks.map(a =>
+        '<div class="atk"><div><div class="nm">' + energy(a.cost) + ' ' + esc(a.name) + '</div>'
+        + (a.text ? '<div class="txt">' + esc(a.text) + '</div>' : '') + '</div>'
+        + '<div class="dmg">' + esc(a.damage || "") + '</div></div>').join("") + '</div>';
+  }
+  const wr = [];
+  if(c.weaknesses)  wr.push("Weakness: " + c.weaknesses.map(w => w.type + " " + w.value).join(", "));
+  if(c.resistances) wr.push("Resistance: " + c.resistances.map(w => w.type + " " + w.value).join(", "));
+  if(c.retreatCost) wr.push("Retreat: " + c.retreatCost.length);
+  if(wr.length) body += '<div class="blk"><div style="color:var(--dim);font-size:13px">' + esc(wr.join("   •   ")) + '</div></div>';
+  if(c.rules)     body += '<div class="blk"><h4>Rules</h4><div style="color:var(--dim);font-size:13px">' + c.rules.map(esc).join("<br><br>") + '</div></div>';
+  if(c.flavorText)body += '<div class="blk"><div style="font-style:italic;color:var(--dim);font-size:13px">' + esc(c.flavorText) + '</div></div>';
+
+  const s = c.set || {};
+  const total = s.printedTotal || s.total || "?";
+  const idBlock = '<div class="idcard">'
+    + '<div><small>Set</small><b>'
+    +   (s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="">' : '')
+    +   esc(s.name || "—") + '</b></div>'
+    + '<div><small>Card number</small><b>' + esc(String(c.number)) + ' / ' + esc(String(total)) + '</b></div>'
+    + '<div><small>Rarity</small><b>' + esc(c.rarity || "—") + '</b></div>'
+    + '<div><small>Released</small><b>' + fmtDate(s.releaseDate) + '</b></div>'
+    + (c.artist ? '<div><small>Illustrator</small><b>' + esc(c.artist) + '</b></div>' : '')
+    + '</div>'
+    + (s.id && SETS.some(x => x.id === s.id)
+        ? '<div style="margin:-6px 0 14px"><button class="back" style="padding:6px 12px;font-size:13px" '
+          + 'onclick="closeCard(); openSet(\'' + s.id + '\')">See the whole ' + esc(s.name) + ' set &rarr;</button></div>'
+        : '');
+
+  document.body.insertAdjacentHTML("beforeend",
+    '<div class="modal" id="modal" onclick="if(event.target===this)closeCard()">'
+    + '<div class="sheet"><button class="x" onclick="closeCard()">&times;</button>'
+    + '<img class="hero" src="' + ((c.images && (c.images.large || c.images.small)) || "") + '" alt="' + esc(c.name) + '">'
+    + '<div class="info"><h2>' + esc(c.name) + (c.hp ? ' <span style="color:var(--dim);font-size:16px">HP ' + esc(c.hp) + '</span>' : '') + '</h2>'
+    + '<div class="sub">' + esc(c.supertype || "") + ' &nbsp;•&nbsp; check these against the card in your hand</div>'
+    + idBlock
+    + '<div id="pricepane">' + priceBlock(c) + '</div>'
+    + '<div class="chips">' + typeChips + subChips + '</div>'
+    + body + '</div></div></div>');
+}
+
+/* Price for the printing currently selected, plus the picker to change it. */
+function priceBlock(c){
+  const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
+  const kinds = Object.keys(tp);
+  let out = "";
+
+  if(kinds.length > 1){
+    out += '<div class="blk" style="border-top:0;padding-top:0"><h4>Which printing do you have?</h4>'
+      + '<div class="vars">' + kinds.map(k =>
+          '<button class="' + (k === modalVar ? "on" : "") + '" onclick="selectVar(\'' + k + '\')">'
+          + esc(varLabel(k))
+          + '<small>' + esc(varNote(k) || (tp[k] && tp[k].market != null ? money(tp[k].market) : "no price")) + '</small>'
+          + '</button>').join("")
+      + '</div></div>';
+  }
+
+  const v = tp[modalVar];
+  if(v){
+    const mk = v.market != null ? v.market : v.mid;
+    out += '<div class="bigprice"><b>' + (mk != null ? money(mk) : "—") + '</b>'
+        +  '<span>' + esc(kinds.length > 1 ? varLabel(modalVar).toLowerCase() : "market price")
+        +  ' &middot; TCGplayer</span></div>';
+    const rows = [["low","Low"],["mid","Mid"],["high","High"],["directLow","Direct low"]]
+      .filter(([k]) => v[k] != null)
+      .map(([k,lab]) => '<div class="price"><small>' + lab + '</small><b>' + money(v[k]) + '</b></div>').join("");
+    if(rows) out += '<div class="prices" style="margin-bottom:12px">' + rows + '</div>';
+  } else if(!kinds.length){
+    out += '<div class="bigprice"><b style="color:var(--dim);font-size:18px">No price listed</b>'
+        +  '<span>TCGplayer has no sales data for this card</span></div>';
+  }
+
+  const cm = c.cardmarket && c.cardmarket.prices;
+  if(cm && cm.trendPrice){
+    out += '<div class="blk"><h4>Cardmarket (EU)</h4><div class="prices">'
+      + '<div class="price"><small>trend</small><b>€' + cm.trendPrice.toFixed(2) + '</b></div>'
+      + (cm.lowPrice ? '<div class="price"><small>low</small><b>€' + cm.lowPrice.toFixed(2) + '</b></div>' : '')
+      + (cm.avg30 ? '<div class="price"><small>30-day avg</small><b>€' + cm.avg30.toFixed(2) + '</b></div>' : '')
+      + '</div></div>';
+  }
+  return out;
+}
+function energy(cost){
+  if(!cost || !cost.length) return "";
+  return cost.map(t => '<span style="display:inline-block;width:14px;height:14px;border-radius:50%;background:'
+    + (TYPE_COLORS[t] || "#ccc") + ';vertical-align:-2px;margin-right:2px;border:1px solid rgba(0,0,0,.4)" title="' + esc(t) + '"></span>').join("");
+}
+function closeCard(){ const m = document.getElementById("modal"); if(m) m.remove(); }
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape"){
+    if(document.getElementById("modal")) closeCard();
+    else if(VIEW === "set" || VIEW === "search") showSets();
+  }
+});
+
+/* ---------------- misc ---------------- */
+function showSets(){
+  closeCard();
+  if(VIEW === "search") qIn.value = "";   // the set list filters on the same box
+  qIn.placeholder = "Search sets…";
+  VIEW = "sets";
+  setTab();
+  renderSets();
+}
+function esc(s){ return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m])); }
+function fmtDate(d){
+  if(!d) return "—";
+  const p = d.split("/");
+  const M = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return (M[parseInt(p[1],10)-1] || "") + " " + parseInt(p[2],10) + ", " + p[0];
+}
+qIn.addEventListener("input", () => {
+  if(VIEW === "search") onSearchTyping();
+  else if(VIEW === "sets") renderSets();
+  else showSets();                       // typing while inside a set backs out to the set list
+});
+qIn.addEventListener("keydown", e => {
+  if(e.key === "Enter" && VIEW === "search"){ clearTimeout(typeTimer); runSearch(qIn.value.trim()); }
+});
+sortIn.addEventListener("change", () => { if(VIEW === "sets") renderSets(); });
+document.getElementById("snap").textContent = PACK_PRICES.d || "—";
+loadSets();
+</script>
+</body>
+</html>
