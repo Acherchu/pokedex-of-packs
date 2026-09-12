@@ -88,7 +88,8 @@ a bare `fetch` will look broken half the time. Without an API key the limit is 1
 |---|---|
 | `loadSets` / `renderSets` / `setTile` | Flat set grid, newest → oldest by default |
 | `packPrice` / `priceLabel` / `money` | Sealed pack price for a set, straight from `PACK_PRICES` |
-| `cardPrice` / `priceStats` | Per-card prices + priciest-card stat, from card data already loaded |
+| `cardPrice` / `cardValue` / `warnBox` / `estLegend` | Real price, estimate fallbacks, and the labelling that keeps them apart |
+| `priceStats` | Priciest-card stat — real prices only, never estimates |
 | `openSet` / `renderSetBody` / `drawCards` | One set: header stats, rarity + type filters, card grid |
 | `showSearch` / `runSearch` / `renderSearch` / `findTile` | Card search: query, paging, result grid |
 | `openCard` / `priceBlock` / `selectVar` | Card sheet: identification block, printing picker, prices |
@@ -108,6 +109,25 @@ can't overwrite a newer one.
 
 Results are whole card objects, so clicking one needs no second request. Every card seen this
 session — from a set or from a search — lands in the `CARDS` map, which is what `openCard` reads.
+
+### Estimated prices
+
+Whole sets ship months before TCGplayer lists anything — the four newest Mega Evolution sets have
+661 cards with no price between them. Rather than show a dash, `cardValue()` falls through:
+
+1. **TCGplayer market price** — real, shown plain in green.
+2. **Cardmarket (EU) trend price** converted at the baked `PRICE_EST.eur` rate — estimate.
+3. **`PRICE_EST.r[rarity]`** — the median price of that rarity across the 15 most recent priced
+   sets, baked by `update-pack-prices.py`. Each entry is `[median, sampleSize]`, and a sample
+   under 10 sets `weak`, which makes the page hedge harder ("treat it as very rough").
+   Mega Hyper Rare is only 2-3 cards per set, hence `MIN_SAMPLE = 2`.
+4. `PRICE_EST.any` — the median of everything, when the rarity is unknown.
+
+Estimates are **always** marked: a `~` prefix, gold instead of green, an `EST` tag in search
+results, a count in the grid legend, and a yellow box in the card sheet naming the exact basis
+("what a typical Double Rare from a recent set sells for, across 199 comparable cards"). The
+wording adapts to which fallback was used — don't claim "brand-new sets take a while to sell"
+for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a real price.
 
 ### Printing picker
 

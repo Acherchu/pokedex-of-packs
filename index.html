@@ -100,6 +100,28 @@
   .bigprice b{font-size:30px;color:#7ee38a;font-weight:800;line-height:1}
   .bigprice span{color:var(--dim);font-size:12px}
 
+  /* ---------- estimated prices ---------- */
+  .bigprice.est{border-color:rgba(255,203,5,.45);background:rgba(255,203,5,.07)}
+  .bigprice.est b{color:var(--gold)}
+  .tag{
+    display:inline-block;background:rgba(255,203,5,.18);color:var(--gold);border:1px solid rgba(255,203,5,.4);
+    border-radius:5px;padding:1px 5px;font-size:10px;font-weight:800;text-transform:uppercase;
+    letter-spacing:.5px;vertical-align:1px;
+  }
+  .warn{
+    background:rgba(255,203,5,.08);border:1px solid rgba(255,203,5,.32);border-radius:10px;
+    padding:10px 13px;margin-bottom:12px;font-size:12.5px;color:#e3d9b4;line-height:1.5;
+  }
+  .warn b{color:var(--gold);display:block;margin-bottom:3px}
+  .card .pr.est{color:var(--gold);background:rgba(0,0,0,.8)}
+  .find .frow .pp.est{color:var(--gold);font-size:14px}
+  .find .frow .pp.est .tag{font-size:9px;padding:0 4px;margin-left:2px}
+  .legend{
+    display:flex;align-items:center;gap:8px;color:var(--dim);font-size:12px;
+    background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:7px 12px;
+  }
+  .legend b{color:var(--gold);font-weight:800}
+
   /* ---------- set grid ---------- */
   .sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:28px}
   .set{
@@ -231,6 +253,11 @@ const API = "https://api.pokemontcg.io/v2";
    sends no CORS headers, so the browser can't fetch them — refresh with update-pack-prices.py.
    { d: snapshot date, s: { setId: {p: pack, b: booster box, e: elite trainer box} } } */
 const PACK_PRICES = {"d":"2026-09-12","s":{"base1":{"p":865.18,"b":100000.0},"base2":{"p":292.24,"b":34400.0},"base3":{"p":332.03},"base4":{"p":426.24},"base5":{"p":325.48,"b":36000.0},"gym1":{"p":279.02},"gym2":{"p":334.98},"neo1":{"p":639.99},"neo2":{"p":524.99},"neo3":{"p":889.99},"neo4":{"p":1688.99},"ecard1":{"p":4800.0},"ex1":{"p":799.99},"ex3":{"p":1250.0},"ex4":{"p":800.0},"ex5":{"p":800.0,"b":52400.0},"ex6":{"p":1009.96},"ex8":{"p":3999.99},"ex9":{"p":1000.0},"ex12":{"p":1999.99},"ex13":{"p":1899.99},"ex15":{"p":2999.99},"ex16":{"p":949.99},"dp1":{"p":195.0},"dp2":{"p":339.83},"dp3":{"p":495.0},"dp4":{"p":323.33},"dp6":{"p":400.13},"dp7":{"p":545.27},"pl1":{"p":319.49},"pl2":{"p":370.0},"pl3":{"p":716.66},"pl4":{"p":464.49},"hgss2":{"p":414.04},"col1":{"p":1050.66},"bw1":{"p":203.49},"bw2":{"p":95.98},"bw3":{"p":169.13},"bw4":{"p":367.06},"bw5":{"p":380.0},"bw6":{"p":350.26},"bw7":{"p":234.39},"bw8":{"p":530.62},"bw9":{"p":290.0},"bw10":{"p":250.99},"xy1":{"p":125.13,"b":3728.0},"xy2":{"p":161.18,"b":12000.0},"xy3":{"p":76.24,"b":4717.5},"xy4":{"p":231.3},"xy5":{"p":63.93,"b":3799.99},"dc1":{"p":429.59},"xy6":{"p":76.54,"b":4280.92,"e":7899.99},"xy7":{"p":140.02,"b":8233.99},"xy8":{"p":60.45,"b":3223.44,"e":1499.0},"xy9":{"p":47.01,"b":4650.0,"e":1099.99},"g1":{"p":308.82,"e":2999.19},"xy10":{"p":44.67,"b":2754.99,"e":1549.0},"xy11":{"p":30.95,"b":1262.5,"e":1800.0},"xy12":{"p":64.42,"b":2539.67,"e":641.25},"sm1":{"p":22.31,"b":973.15,"e":247.93},"sm2":{"p":35.82,"b":1824.5,"e":433.38},"sm3":{"p":32.09,"b":1243.1,"e":324.46},"sm35":{"p":109.15,"e":1016.29},"sm4":{"p":18.63,"b":680.35,"e":220.66},"sm5":{"p":49.67,"b":1450.0,"e":711.99},"sm6":{"p":11.92,"b":1647.98,"e":686.16},"sm7":{"p":62.86,"b":2487.85,"e":2091.3},"sm75":{"p":104.04,"e":1256.49},"sm8":{"p":58.03,"b":1484.36,"e":681.55},"sm9":{"p":295.14,"b":11725.0,"e":4000.0},"det1":{"p":19.94},"sm10":{"p":67.78,"b":2544.31,"e":2599.0},"sm11":{"p":77.72,"b":3135.7,"e":1719.9},"sm115":{"p":48.53,"e":562.12},"sm12":{"p":74.29,"b":4216.67,"e":1874.5},"swsh1":{"p":10.71,"b":689.62,"e":161.86},"swsh2":{"p":11.26,"b":486.27,"e":341.35},"swsh3":{"p":9.91,"b":371.51,"e":111.82},"swsh35":{"p":19.35,"e":217.97},"swsh4":{"p":10.74,"b":311.85,"e":136.53},"swsh45":{"p":15.65,"e":148.05},"swsh5":{"p":9.4,"b":292.3,"e":247.6},"swsh6":{"p":11.65,"b":489.67,"e":142.81},"swsh7":{"p":44.61,"b":1595.0,"e":506.78},"cel25":{"p":34.94,"e":362.29},"swsh8":{"p":19.33,"b":968.89,"e":327.59},"swsh9":{"p":16.79,"b":582.81,"e":161.85},"swsh10":{"p":10.54,"b":249.99,"e":143.64},"pgo":{"p":12.78,"e":170.51},"swsh11":{"p":18.31,"b":732.1,"e":193.66},"swsh12":{"p":15.09,"b":519.12,"e":160.54},"swsh12pt5":{"p":25.52,"e":320.81},"sv1":{"p":8.93,"b":292.45,"e":133.67},"sv2":{"p":15.78,"b":481.25,"e":218.29},"sv3":{"p":12.98,"b":373.61,"e":286.27},"sv3pt5":{"p":28.26,"e":554.55},"sv4":{"p":8.41,"b":276.17,"e":134.82},"sv4pt5":{"p":23.72,"e":444.27},"sv5":{"p":10.96,"b":316.18,"e":125.27},"sv6":{"p":9.2,"b":196.88,"e":103.9},"sv6pt5":{"p":14.82,"e":114.72},"sv7":{"p":10.56,"b":246.17,"e":154.95},"sv8":{"p":7.9,"b":189.81,"e":122.93},"sv8pt5":{"p":14.24,"e":146.88},"sv9":{"p":6.83,"b":244.27,"e":140.13},"sv10":{"p":9.02,"b":301.88,"e":115.97},"zsv10pt5":{"p":14.4,"e":170.74},"rsv10pt5":{"p":13.85,"e":152.78},"me1":{"p":8.37,"b":290.73,"e":121.86},"me2":{"p":12.68,"b":397.81,"e":154.26},"me2pt5":{"p":13.74,"e":159.22},"me3":{"p":5.29,"b":173.34,"e":62.23},"me4":{"p":5.31,"b":196.82,"e":62.1},"me5":{"p":5.9,"b":197.59,"e":70.36}}}; // end-pack-prices
+/* Baselines for estimating cards TCGplayer hasn't priced — whole sets ship before they're
+   listed. Median price per rarity across recent priced sets, plus the EUR→USD rate used when
+   only a European price exists. Refreshed by the same script. */
+const PRICE_EST = {"r":{"Common":[0.13,924],"Rare":[0.19,235],"Double Rare":[0.84,199],"Uncommon":[0.14,646],"Illustration Rare":[13.2,354],"Ultra Rare":[2.29,230],"Special Illustration Rare":[36.76,142],"Mega Hyper Rare":[250.04,3],"Black White Rare":[552.62,2],"Hyper Rare":[11.16,47],"ACE SPEC Rare":[0.58,33],"Shiny Rare":[4.76,119],"Shiny Ultra Rare":[2.29,12]},"any":0.2,"sets":15,"eur":1.1592,"d":"2026-09-12"}; // end-price-est
+
 const TYPE_COLORS = {
   Grass:"#7dc96a", Fire:"#ff8b47", Water:"#54a9f5", Lightning:"#ffd84d", Psychic:"#c07bf0",
   Fighting:"#d9713c", Darkness:"#7d8b9e", Metal:"#b8c2cc", Fairy:"#f79ac9", Dragon:"#c9b45a",
@@ -409,6 +436,7 @@ function renderSearch(){
     +     sets.map(s => '<option' + (s === lastSetFilter ? ' selected' : '') + '>' + esc(s) + '</option>').join("")
     +   '</select>'
     +   '<span class="count" id="fshown"></span>'
+    +   estLegend(searchHits)
     + '</div>'
     + '<div class="found" id="found"></div>'
     + (searchHits.length < searchTotal
@@ -430,14 +458,16 @@ function drawFound(){
 }
 function findTile(c){
   const s = c.set || {};
-  const p = cardPrice(c);
+  const r = cardValue(c);
   const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
   return '<div class="find" onclick="openCard(\'' + c.id + '\')">'
     + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
     + '<div class="fnm">' + esc(c.name) + '</div>'
     + '<div class="fset">' + sym + '<span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
     + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
-    + '<span class="pp">' + (p != null ? money(p) : "—") + '</span></div>'
+    + '<span class="pp' + (r && r.est ? " est" : "") + '" title="' + esc(r ? (r.est ? "Estimate — " + r.why : r.why) : "") + '">'
+    +   (r ? (r.est ? "~" + money(r.v) + ' <span class="tag">est</span>' : money(r.v)) : "—")
+    + '</span></div>'
     + '</div>';
 }
 
@@ -465,6 +495,50 @@ function cardPrice(c){
   // cheapest printing of the card — avoids 1st-edition variants inflating the set
   const vals = Object.values(p).map(v => v && v.market).filter(v => typeof v === "number" && v > 0);
   return vals.length ? Math.min(...vals) : null;
+}
+
+/* What a card is worth, and how much to trust it.
+   Brand-new sets ship months before TCGplayer lists a single card — the four newest sets have
+   661 cards with no price between them — so rather than showing a dash, fall back through
+   the European market and then a same-rarity baseline, saying clearly which one was used.
+   -> {v, est, why, weak}  (est = it's a guess, weak = a guess from very little data) */
+function cardValue(c){
+  const exact = cardPrice(c);
+  if(exact != null) return {v:exact, est:false, why:"TCGplayer market price"};
+
+  const cm = (c.cardmarket && c.cardmarket.prices) || {};
+  const eu = cm.trendPrice || cm.averageSellPrice || cm.avg30;
+  if(eu) return {v: eu * PRICE_EST.eur, est:true, basis:"eu",
+                 why:"converted from its European (Cardmarket) price at €1 = " + money(PRICE_EST.eur)};
+
+  const base = PRICE_EST.r[c.rarity];
+  if(base) return {
+    v: base[0], est:true, basis:"rarity", weak: base[1] < 10,
+    why: "what a typical " + c.rarity + " from a recent set sells for, across "
+       + base[1] + " comparable card" + (base[1] === 1 ? "" : "s")
+  };
+  if(PRICE_EST.any) return {
+    v: PRICE_EST.any, est:true, basis:"rarity", weak:true,
+    why:"what a typical card from a recent set sells for; nothing comparable to this rarity yet"
+  };
+  return null;
+}
+/* The yellow explain-yourself box under an estimated price. */
+function warnBox(r, lead){
+  return '<div class="warn"><b>⚠ This is an estimate, not a listed price.</b>'
+    + (lead || "TCGplayer has no sale price for this card.")
+    + (r.basis === "rarity" ? " Brand-new sets often go months before anything sells." : "")
+    + " The figure above is " + esc(r.why) + "."
+    + (r.weak ? ' <b>Treat it as very rough</b> — there is little to compare against.' : '')
+    + '</div>';
+}
+
+/* Shown above a grid that contains guessed prices, so the ~ isn't a mystery. */
+function estLegend(cards){
+  const n = cards.filter(c => cardPrice(c) == null && cardValue(c)).length;
+  if(!n) return "";
+  return '<span class="legend"><b>~</b> ' + n + " of " + cards.length
+    + " ha" + (n === 1 ? "s" : "ve") + " no sale price yet — those are estimates</span>";
 }
 function priceStats(cards){
   let total = 0, n = 0, hi = 0, hiName = "";
@@ -575,6 +649,7 @@ function renderSetBody(){
     +   (types.length ? '<select id="ct"><option value="">All types</option>' + types.map(t => '<option>' + esc(t) + '</option>').join("") + '</select>' : '')
     +   '<button class="btn-gold" onclick="ripPack()">Open a booster pack</button>'
     +   '<span class="count" id="shown"></span>'
+    +   estLegend(currentCards)
     + '</div>'
     + '<div class="cards" id="grid"></div>';
   ["cq","cr","ct"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("input", drawCards); });
@@ -596,11 +671,12 @@ function drawCards(){
 }
 function cardTile(c, cls){
   const img = c.images && c.images.small ? c.images.small : "";
-  const p = cardPrice(c);
+  const r = cardValue(c);
   return '<div class="card ' + (cls || "") + '" onclick="openCard(\'' + c.id + '\')" title="' + esc(c.name) + '">'
     + (img ? '<img src="' + img + '" alt="' + esc(c.name) + '" loading="lazy">' : '<div style="padding:10px">' + esc(c.name) + '</div>')
     + '<div class="no">#' + esc(String(c.number)) + '</div>'
-    + (p != null ? '<div class="pr">' + money(p) + '</div>' : '')
+    + (r ? '<div class="pr' + (r.est ? " est" : "") + '" title="' + esc(r.est ? "Estimate — " + r.why : r.why) + '">'
+           + (r.est ? "~" : "") + money(r.v) + '</div>' : '')
     + '</div>';
 }
 
@@ -655,6 +731,7 @@ function selectVar(k){
 
 function openCard(id){
   const c = CARDS.get(id); if(!c) return;
+  closeCard();            // never stack two sheets — duplicate ids would cross their wires
   modalCard = c;
   const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
   const withPrice = Object.keys(tp).filter(k => tp[k] && tp[k].market != null);
@@ -727,18 +804,31 @@ function priceBlock(c){
   }
 
   const v = tp[modalVar];
-  if(v){
-    const mk = v.market != null ? v.market : v.mid;
-    out += '<div class="bigprice"><b>' + (mk != null ? money(mk) : "—") + '</b>'
+  const mk = v ? (v.market != null ? v.market : (v.mid != null ? v.mid : v.low)) : null;
+  if(v && mk != null){
+    out += '<div class="bigprice"><b>' + money(mk) + '</b>'
         +  '<span>' + esc(kinds.length > 1 ? varLabel(modalVar).toLowerCase() : "market price")
         +  ' &middot; TCGplayer</span></div>';
     const rows = [["low","Low"],["mid","Mid"],["high","High"],["directLow","Direct low"]]
       .filter(([k]) => v[k] != null)
       .map(([k,lab]) => '<div class="price"><small>' + lab + '</small><b>' + money(v[k]) + '</b></div>').join("");
     if(rows) out += '<div class="prices" style="margin-bottom:12px">' + rows + '</div>';
+  } else if(v){
+    // the printing is listed but has no sales behind it yet
+    const r = cardValue(c);
+    out += '<div class="bigprice est"><b>' + (r ? "~" + money(r.v) : "—") + '</b>'
+        +  '<span><span class="tag">estimate</span> no sales yet for this printing</span></div>'
+        +  (r ? warnBox(r, "TCGplayer lists this printing but has no sales behind it.") : "");
   } else if(!kinds.length){
-    out += '<div class="bigprice"><b style="color:var(--dim);font-size:18px">No price listed</b>'
-        +  '<span>TCGplayer has no sales data for this card</span></div>';
+    const r = cardValue(c);
+    if(r && r.est){
+      out += '<div class="bigprice est"><b>~' + money(r.v) + '</b>'
+          +  '<span><span class="tag">estimate</span> not a real sale price</span></div>'
+          +  warnBox(r);
+    } else {
+      out += '<div class="bigprice"><b style="color:var(--dim);font-size:18px">No price listed</b>'
+          +  '<span>TCGplayer has no sales data for this card</span></div>';
+    }
   }
 
   const cm = c.cardmarket && c.cardmarket.prices;

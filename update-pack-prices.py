@@ -1,5 +1,5 @@
 """
-Regenerates the sealed booster-pack prices embedded in index.html.
+Regenerates the sealed booster-pack prices and the rarity price baselines embedded in index.html.
 
 pokemontcg.io has no sealed-product data and tcgcsv.com sends no CORS headers, so the
 browser can't fetch pack prices itself. This script pulls them here and rewrites the
@@ -9,7 +9,7 @@ PACK_PRICES block inside index.html, keeping the site a single double-clickable 
 
 Prices come from TCGplayer market data via tcgcsv.com (free, no key).
 """
-import json, re, sys, time, unicodedata, urllib.request, difflib
+import json, re, statistics, sys, time, unicodedata, urllib.request, difflib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -91,6 +91,66 @@ def pick(products, prices, suffix):
     return best
 
 
+SAMPLE_SETS = 15        # how many recent priced sets feed the rarity baselines
+MIN_SAMPLE = 2          # a rarity needs this many real prices before it becomes a baseline
+                        # (Mega Hyper Rare is genuinely only 2-3 cards per set)
+
+
+def card_market(c):
+    """Cheapest TCGplayer market price across a card's printings."""
+    p = (c.get("tcgplayer") or {}).get("prices") or {}
+    vals = [v.get("market") for v in p.values() if v and v.get("market")]
+    return min(vals) if vals else None
+
+
+def eur_usd():
+    try:
+        r = get("https://api.frankfurter.app/latest?from=EUR&to=USD")
+        return round(r["rates"]["USD"], 4)
+    except Exception:
+        print("  ! couldn't fetch EUR/USD, using 1.08")
+        return 1.08
+
+
+def rarity_baselines(sets):
+    """Median price per rarity across the most recent sets that actually have prices.
+
+    Whole sets ship before TCGplayer lists anything — the four newest Mega Evolution sets had
+    661 cards with no price between them — so an estimate can only come from comparable cards
+    in other recent sets.
+    """
+    recent = sorted(sets, key=lambda s: s.get("releaseDate") or "", reverse=True)
+    buckets, used = {}, []
+    for s in recent:
+        if len(used) >= SAMPLE_SETS:
+            break
+        try:
+            cards = get(f"{PTCG}/cards?q=set.id:{s['id']}&select=id,rarity,tcgplayer&pageSize=250")["data"]
+        except Exception:
+            continue
+        priced = [c for c in cards if card_market(c)]
+        if len(priced) < 10:
+            continue                      # unpriced or tiny set, skip it
+        used.append(s["name"])
+        for c in priced:
+            r = c.get("rarity")
+            if r:
+                buckets.setdefault(r, []).append(card_market(c))
+
+    # [median, how many real prices it came from] — the count drives how strongly the page
+    # hedges the estimate it shows
+    table = {r: [round(statistics.median(v), 2), len(v)]
+             for r, v in buckets.items() if len(v) >= MIN_SAMPLE}
+    every = [x for v in buckets.values() for x in v]
+    fallback = round(statistics.median(every), 2) if every else 0.25
+    print(f"  baselines from {len(used)} sets: {', '.join(used[:4])}…")
+    print(f"  {len(table)} rarities, fallback {fallback}")
+    thin = [r for r, (m, n) in table.items() if n < 10]
+    if thin:
+        print(f"  thin samples (<10 cards): {', '.join(thin)}")
+    return {"r": table, "any": fallback, "sets": len(used)}
+
+
 def main():
     print("fetching pokemontcg.io sets…")
     sets = get(f"{PTCG}/sets?pageSize=250")["data"]
@@ -159,16 +219,27 @@ def main():
     packs = sum(1 for v in result.values() if "p" in v)
     print(f"done: {packs} sets with a booster-pack price, {len(result)} with any sealed price")
 
-    blob = json.dumps({"d": time.strftime("%Y-%m-%d"), "s": result}, separators=(",", ":"))
+    print("building rarity baselines for cards with no price…")
+    est = rarity_baselines(sets)
+    est["eur"] = eur_usd()
+
+    today = time.strftime("%Y-%m-%d")
     html = (HERE / "index.html").read_text(encoding="utf-8")
-    new, n = re.subn(r"const PACK_PRICES = .*?; // end-pack-prices",
-                     "const PACK_PRICES = " + blob + "; // end-pack-prices",
-                     html, flags=re.S)
-    if not n:
-        print("!! PACK_PRICES marker not found in index.html", file=sys.stderr)
-        (HERE / "pack-prices.json").write_text(blob, encoding="utf-8")
-        sys.exit(1)
-    (HERE / "index.html").write_text(new, encoding="utf-8")
+    blocks = {
+        "PACK_PRICES": {"d": today, "s": result},
+        "PRICE_EST":   dict(est, d=today),
+    }
+    for name, data in blocks.items():
+        blob = json.dumps(data, separators=(",", ":"))
+        marker = "// end-" + name.lower().replace("_", "-")
+        html, n = re.subn("const " + name + r" = .*?; " + re.escape(marker),
+                          "const " + name + " = " + blob + "; " + marker,
+                          html, flags=re.S)
+        if not n:
+            print(f"!! {name} marker not found in index.html", file=sys.stderr)
+            (HERE / (name.lower() + ".json")).write_text(blob, encoding="utf-8")
+            sys.exit(1)
+    (HERE / "index.html").write_text(html, encoding="utf-8")
     print("index.html updated")
 
 

@@ -26,6 +26,11 @@ as a 1st Edition holofoil but $39.28 unlimited, so each option spells out how to
 ("1st Edition stamp and shiny art", "shiny everywhere except the artwork"). Pick yours and you
 get its market price plus low / mid / high, and the European Cardmarket figures.
 
+**Cards nobody has sold yet** still get a number. Brand-new sets take months to appear on
+TCGplayer, so those cards fall back to their European market price, or to what that rarity
+typically sells for in recent sets. Every estimate is clearly marked — a `~`, an amber colour,
+an `EST` tag, and a note in the card sheet explaining exactly where the figure came from.
+
 ## Running it
 
 It's one HTML file with no build step and no dependencies — open `index.html` in a browser and it
