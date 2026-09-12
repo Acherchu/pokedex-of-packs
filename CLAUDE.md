@@ -14,7 +14,10 @@ Sections, switched from the header:
 - **Card search** — search every card ever printed by name. Each *printing* comes back as its own
   result (set, number, rarity, price), and the card sheet has a printing picker so you can pin
   down the exact copy you own.
-- **View more ▾** — the menu that holds everything else, and where new sections get added:
+- **View more ›** — not a dropdown. It reveals the remaining tabs *in the same row*, styled
+  identically to Packs and Card search, and becomes "Fewer ‹". The row starts collapsed, and
+  auto-expands whenever you're in one of the hidden sections so the active tab is never hidden.
+  New sections go here — add a button with class `extra` and an entry in `TAB_OF`:
   - **Deck builder** — pick a Pokémon type, add cards to a deck, tick off the ones you own, save it.
   - **My decks** — saved decks, each showing what it's worth and what you still need to find.
   - **My collection** — every card you've ticked off, and what it's worth.

@@ -122,21 +122,12 @@
   }
   .legend b{color:var(--gold);font-weight:800}
 
-  /* ---------- view more menu ---------- */
-  .morewrap{position:relative;display:inline-block}
-  .menu{
-    position:absolute;top:calc(100% + 9px);right:0;z-index:70;min-width:250px;
-    background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:6px;
-    box-shadow:var(--shadow);
-  }
-  .menu button{
-    display:block;width:100%;text-align:left;background:none;border:0;color:var(--text);
-    font:inherit;font-size:14px;font-weight:600;padding:9px 11px;border-radius:8px;cursor:pointer;
-  }
-  .menu button:hover{background:rgba(255,203,5,.10);color:var(--gold)}
-  .menu button span{display:inline-block;width:22px}
-  .menu button small{display:block;color:var(--dim);font-weight:400;font-size:11.5px;padding-left:22px}
-  .menu button:hover small{color:var(--dim)}
+  /* ---------- the rest of the tabs ----------
+     Same row, same buttons — "View more" just reveals the ones past the first two. */
+  .tabs .extra{display:none}
+  .tabs.open .extra{display:block}
+  .tabs .morebtn{color:var(--gold);opacity:.85}
+  .tabs .morebtn:hover{opacity:1;color:var(--gold)}
 
   /* ---------- deck builder ---------- */
   .types{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
@@ -303,17 +294,13 @@
 <header class="top">
   <div class="top-in">
     <div class="logo" onclick="showSets()"><div class="pokeball"></div><span>Pokédex of Packs</span></div>
-    <nav class="tabs">
+    <nav class="tabs" id="tabs">
       <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
       <button id="tab-cards" onclick="showSearch()">Card search</button>
-      <span class="morewrap">
-        <button id="tab-more" onclick="toggleMore(event)">View more ▾</button>
-        <div class="menu" id="moremenu" hidden>
-          <button onclick="showBuilder()"><span>🛠</span> Deck builder<small>Build your dream deck by type</small></button>
-          <button onclick="showDecks()"><span>💾</span> My decks<small>Decks you've saved</small></button>
-          <button onclick="showOwned()"><span>✅</span> My collection<small>Cards you've ticked off</small></button>
-        </div>
-      </span>
+      <button id="tab-deck"  class="extra" onclick="showBuilder()">Deck builder</button>
+      <button id="tab-decks" class="extra" onclick="showDecks()">My decks</button>
+      <button id="tab-owned" class="extra" onclick="showOwned()">My collection</button>
+      <button id="tab-more" class="morebtn" onclick="toggleMore()">View more ›</button>
     </nav>
     <div class="grow"></div>
     <input type="search" id="q" placeholder="Search sets…" autocomplete="off">
@@ -546,7 +533,7 @@ const PAGE = 60;
 let searchTerm = "", searchPage = 1, searchTotal = 0, searchHits = [], searchBusy = false, searchSeq = 0;
 
 function showSearch(){
-  closeCard(); closeMore();
+  closeCard();
   VIEW = "search";
   setTab();
   qIn.placeholder = "Search every card…";
@@ -555,23 +542,26 @@ function showSearch(){
   renderSearch();
   qIn.focus();
 }
-const MORE_VIEWS = ["deck","decks","deckview","owned"];
+const TAB_OF = {
+  sets:"tab-packs", set:"tab-packs", search:"tab-cards",
+  deck:"tab-deck", decks:"tab-decks", deckview:"tab-decks", owned:"tab-owned"
+};
+const EXTRA_TABS = ["tab-deck","tab-decks","tab-owned"];
 function setTab(){
-  document.getElementById("tab-packs").classList.toggle("on", VIEW === "sets" || VIEW === "set");
-  document.getElementById("tab-cards").classList.toggle("on", VIEW === "search");
-  document.getElementById("tab-more").classList.toggle("on", MORE_VIEWS.indexOf(VIEW) >= 0);
+  const active = TAB_OF[VIEW];
+  for(const id in TAB_OF) document.getElementById(TAB_OF[id]).classList.remove("on");
+  if(active) document.getElementById(active).classList.add("on");
+  if(EXTRA_TABS.indexOf(active) >= 0) openMore(true);   // never hide the section you're in
   sortIn.style.display = VIEW === "sets" ? "" : "none";
   qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search") ? "" : "none";
 }
-function toggleMore(ev){
-  if(ev) ev.stopPropagation();
-  const m = document.getElementById("moremenu");
-  m.hidden = !m.hidden;
+function openMore(yes){
+  document.getElementById("tabs").classList.toggle("open", yes);
+  document.getElementById("tab-more").textContent = yes ? "Fewer ‹" : "View more ›";
 }
-function closeMore(){ document.getElementById("moremenu").hidden = true; }
-document.addEventListener("click", e => {
-  if(!e.target.closest || !e.target.closest(".morewrap")) closeMore();
-});
+function toggleMore(){
+  openMore(!document.getElementById("tabs").classList.contains("open"));
+}
 
 /* Re-draw whatever is on screen after the deck or collection changes. */
 function refreshView(){
@@ -935,7 +925,7 @@ const TYPES = ["Grass","Fire","Water","Lightning","Psychic","Fighting","Darkness
 let deckType = "", deckHits = [], deckPage = 1, deckTotal = 0, deckBusy = false;
 
 function showBuilder(){
-  closeMore(); closeCard();
+  closeCard();
   VIEW = "deck"; setTab();
   if(!deckType) deckType = "Grass";
   renderBuilder();
@@ -1040,7 +1030,7 @@ function deckValue(){
 
 /* ---------------- saved decks ---------------- */
 function showDecks(){
-  closeMore(); closeCard();
+  closeCard();
   VIEW = "decks"; setTab();
   countEl.textContent = DECKS.length + " saved deck" + (DECKS.length === 1 ? "" : "s");
   if(!DECKS.length){
@@ -1117,7 +1107,7 @@ function deckCardTile(e){
 
 /* ---------------- collection ---------------- */
 function showOwned(){
-  closeMore(); closeCard();
+  closeCard();
   VIEW = "owned"; setTab();
   const list = Object.values(OWNED);
   countEl.textContent = list.length + " card" + (list.length === 1 ? "" : "s");
@@ -1295,7 +1285,7 @@ document.addEventListener("keydown", e => {
 
 /* ---------------- misc ---------------- */
 function showSets(){
-  closeCard(); closeMore();
+  closeCard();
   if(VIEW === "search") qIn.value = "";   // the set list filters on the same box
   qIn.placeholder = "Search sets…";
   VIEW = "sets";
