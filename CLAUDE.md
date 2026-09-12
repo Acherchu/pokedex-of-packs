@@ -1,5 +1,9 @@
 # Pokédex of Packs
 
+**Live at https://acherchu.github.io/pokedex-of-packs/** — GitHub Pages off `main` in
+[Acherchu/pokedex-of-packs](https://github.com/Acherchu/pokedex-of-packs). Pushing to `main`
+redeploys it; a build takes about a minute.
+
 A single-file website listing **every Pokémon TCG set ever printed** (174 and counting), newest
 to oldest, each showing **what a sealed booster pack of it costs**. Click a set to see every card
 in it; click a card for the full card detail and market prices.
@@ -120,6 +124,9 @@ Keep those descriptions — they're the difference between a price list and some
 actually use.
 
 ## Conventions
+
+This one is **public** — it is a real site people have the link to. Don't push a broken `main`;
+check it in a browser first, because there's no staging step between a push and the live URL.
 
 Same as the browser games: **keep it one self-contained HTML file.** No bundler, no
 package.json, no npm dependency. All card art and set logos are hotlinked from
