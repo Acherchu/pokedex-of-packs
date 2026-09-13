@@ -20,6 +20,8 @@ Sections, switched from the header:
   identically to Packs and Card search, and becomes "Fewer ‹". The row starts collapsed, and
   auto-expands whenever you're in one of the hidden sections so the active tab is never hidden.
   New sections go here — add a button with class `extra` and an entry in `TAB_OF`:
+  - **Collecting** — pick a Pokémon, see every card of it (optionally its whole evolution line),
+    what collecting them all costs, what you already have, and what-if values for the years ahead.
   - **My collection** — every card you've ticked off, and what it's worth.
 
 ## Files
@@ -197,6 +199,38 @@ GrassFireWater", "Blend Energy GrassFirePsychicDarkness". Rainbow / Prism Energy
 they only appear under All types. Tiles are the shared `findTile`, so Add to collection and the
 card sheet work the same as in Card search. Card search's own type buttons are *Pokémon* types
 (Energy cards have no types, so they drop out there once a type is picked).
+
+### Collecting
+
+The user asked for a section to "choose/search up a Pokémon and see every single type of it, select
+if you also want its evolutions, and an estimated value and how much it might be in the following
+years". `showCollecting()` (`VIEW = "collecting"`, extra tab `tab-collecting`); the header search box
+picks the Pokémon (debounced 500ms, `pickSpecies`), with example buttons.
+
+- Cards: `name:"<Pokémon>" supertype:Pokémon`, every page (`fetchAllCards`), cached as `col:<name>`.
+  A quoted name matches as a word, so "Mew" doesn't pull in Mewtwo. Nothing found → a wildcard search
+  picks the Pokémon the typing is part of ("chariz" → Charizard); still nothing → a clear message.
+- Evolutions (checkbox "Also collect its evolutions", on by default): follow `evolvesFrom` /
+  `evolvesTo` out 3 steps, max 12 Pokémon (`loadLine`). Names go through `colBase` (strips ex / V /
+  GX / LV.X, Mega, Dark, Alolan, "Blaine's" …). Two traps, both hit in testing: **only follow a
+  Pokémon's own cards** — TAG TEAM "Charizard & Braixen-GX" dragged in Fennekin/Braixen/Delphox — and
+  **skip names that contain a Pokémon already in the line** ("Charizard G" is just Charizard's LV.X
+  cards). Failed loads retry after 3s, then show a "Couldn't load … — try again" chip (`colMissing`).
+  Line chips are ordered by evolution depth (`colDepths`) and toggle a Pokémon in/out (`colHidden`).
+  Pichu isn't found from Pikachu — baby Pokémon cards don't list what they evolve into.
+- Stats: cards, cost to collect all (each card at its cheapest version via `cardValue`; estimates
+  counted and flagged ~), what you already own (and its value), still to get. Sort: evolution order,
+  newest, oldest, price. Tiles are `findTile` (add to collection works; `refreshView` redraws).
+- **Future value** (button "📈 Estimated value in the coming years", `colFutureHTML`): there is no
+  price history in this data, so it is deliberately **three labelled what-ifs, not a forecast** —
+  today's total compounded at −6% / +4% / +12% a year (`COL_RATES`) for 1, 2, 3, 5, 10 years — plus the
+  one real signal: Cardmarket `trendPrice` vs `avg30` summed over the cards (shown when ≥5 have both).
+  Keep the "these are what-ifs, not a prediction" wording; never present one number as what it
+  *will* be worth.
+
+Tested: Charizard 188 cards (Charmander 46 → Charmeleon 35 → Charizard 107, ~$26,795), Eevee all 8
+evolutions (386 cards), Gengar with Gastly/Haunter, Mew with none, "chariz", a nonsense name, the
+evolution checkbox, leaving Charmander out, owning 2 cards ($4,501 of it), the future table.
 
 ### No camera
 

@@ -308,6 +308,31 @@
   .ekind button.on{background:var(--gold);color:var(--navy)}
   .etypes button b{font-weight:400;color:var(--dim);font-size:12px}
 
+  /* ---------- collecting ---------- */
+  .colhead{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+  .colhead h2{margin:0;font-size:26px}
+  .colevo{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;cursor:pointer;user-select:none;
+    background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px}
+  .colevo input{accent-color:var(--gold);width:17px;height:17px}
+  .colline{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0 2px}
+  .colline button{background:var(--panel);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13.5px;
+    font-weight:600;padding:6px 13px;border-radius:999px;cursor:pointer}
+  .colline button b{font-weight:400;color:var(--dim);font-size:12px;margin-left:3px}
+  .colline button.off{opacity:.45;text-decoration:line-through}
+  .colline button:hover{border-color:var(--gold)}
+  .colline i{color:var(--dim);font-style:normal;align-self:center}
+  .future{background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:14px}
+  .future h3{margin:0 0 4px;font-size:18px}
+  .future p{color:var(--dim);font-size:13px;margin:6px 0;line-height:1.5}
+  .future p b{color:var(--text)}
+  .ftable{overflow-x:auto;margin:10px 0}
+  .ftable table{border-collapse:collapse;width:100%;min-width:420px;font-size:14px}
+  .ftable th,.ftable td{padding:8px 10px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  .ftable th:first-child,.ftable td:first-child{text-align:left}
+  .ftable th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+  .ftable td.lo{color:#ffb4b4}.ftable td.mid{color:var(--gold);font-weight:700}.ftable td.hi{color:#7ee38a}
+  .ftable tr.now td{color:var(--text);font-weight:700}
+
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
   #acct .who{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
@@ -354,6 +379,7 @@
       <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
       <button id="tab-cards" onclick="showSearch()">Card search</button>
       <button id="tab-energy" onclick="showEnergy()">Energy</button>
+      <button id="tab-collecting" class="extra" onclick="showCollecting()">Collecting</button>
       <button id="tab-owned" class="extra" onclick="showOwned()">My collection</button>
       <button id="tab-more" class="morebtn" onclick="toggleMore()">View more ›</button>
     </nav>
@@ -883,15 +909,15 @@ function showSearch(){
   renderSearch();
   qIn.focus();
 }
-const TAB_OF = {sets:"tab-packs", set:"tab-packs", search:"tab-cards", energy:"tab-energy", owned:"tab-owned"};
-const EXTRA_TABS = ["tab-owned"];
+const TAB_OF = {sets:"tab-packs", set:"tab-packs", search:"tab-cards", energy:"tab-energy", collecting:"tab-collecting", owned:"tab-owned"};
+const EXTRA_TABS = ["tab-collecting", "tab-owned"];
 function setTab(){
   const active = TAB_OF[VIEW];
   for(const id in TAB_OF) document.getElementById(TAB_OF[id]).classList.remove("on");
   if(active) document.getElementById(active).classList.add("on");
   if(EXTRA_TABS.indexOf(active) >= 0) openMore(true);   // never hide the section you're in
   sortIn.style.display = VIEW === "sets" ? "" : "none";
-  qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search" || VIEW === "energy") ? "" : "none";
+  qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search" || VIEW === "energy" || VIEW === "collecting") ? "" : "none";
 }
 function openMore(yes){
   document.getElementById("tabs").classList.toggle("open", yes);
@@ -907,6 +933,7 @@ function refreshView(){
   if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
   else if(VIEW === "energy") drawEnergy();
+  else if(VIEW === "collecting") keepScroll(renderCollecting);
   else if(VIEW === "set") drawCards();
 }
 function exampleSearch(t){ qIn.value = t; runSearch(t); }
@@ -1013,6 +1040,299 @@ function renderSearch(){
         : '');
   drawFound();
 }
+/* ---------------- collecting ----------------
+   Pick a Pokémon and see every card of it ever printed — Charizard, Charizard ex, Dark Charizard,
+   M Charizard-EX… — optionally with its whole evolution line, what collecting all of them costs,
+   what's already in your collection, and what that total might become.
+
+   Cards: name:"<Pokémon>" supertype:Pokémon (a quoted name matches it as a word, so "Mew" doesn't
+   pull in Mewtwo), every page, through the saved-copy cache (col:<name>). If nothing matches what
+   was typed, a wildcard search finds the Pokémon the typing is part of ("chariz" → Charizard).
+   Evolutions: the cards' own evolvesFrom / evolvesTo names, reduced to the species (colBase strips
+   ex / V / GX, Mega, Dark, Alolan, "Blaine's" …), followed out up to 3 steps, at most 12 Pokémon.
+
+   Value: each card at its cheapest printing (cardValue — estimates count, and are marked).
+   The years ahead: there is no price history in this data and nobody can predict card prices, so
+   it shows three labelled what-ifs, not a forecast — prices falling 6% a year, growing 4%, growing
+   12% — next to the one real signal available: Cardmarket's price trend against its 30-day average
+   for these cards. */
+const COL_RATES = {lo: -0.06, mid: 0.04, hi: 0.12}, COL_YEARS = [1, 2, 3, 5, 10];
+const COL_MAX_SPECIES = 12, COL_EXAMPLES = ["Charizard","Pikachu","Eevee","Gengar","Mewtwo","Umbreon"];
+const COL_PREFIX = /^(?:Dark|Light|Shining|Radiant|Alolan|Galarian|Hisuian|Paldean|Mega|M|Detective|Surfing|Flying|Imposter|Special Delivery|Team Rocket's|[A-Z][A-Za-z.]*'s)\s+/;
+let colName = "", colCards = {}, colEvo = true, colHidden = new Set(), colSort = "line", colSeq = 0;
+let colBusy = false, colLineBusy = false, colLineDone = false, colError = "", colFuture = false, colTypeTimer = null;
+const colMissing = new Set();   // evolutions that couldn't be loaded (API failed) — offered as a retry
+
+function colBase(n){
+  let x = species(n), prev;
+  do{ prev = x; x = x.replace(COL_PREFIX, "").trim(); }while(x && x !== prev);
+  return x;
+}
+function showCollecting(){
+  closeCard();
+  if(VIEW !== "collecting") qIn.value = colName;
+  VIEW = "collecting"; setTab();
+  qIn.placeholder = "Choose a Pokémon…";
+  renderCollecting();
+}
+function onCollectTyping(){
+  clearTimeout(colTypeTimer);
+  const t = qIn.value.trim();
+  colTypeTimer = setTimeout(() => pickSpecies(t), 500);
+}
+function exampleCollect(n){ qIn.value = n; pickSpecies(n); }
+
+async function fetchAllCards(q){
+  let all = [], page = 1;
+  while(true){
+    const d = await getJSON(API + "/cards?q=" + encodeURIComponent(q) + "&orderBy=-set.releaseDate&pageSize=250&page=" + page);
+    all = all.concat(d.data);
+    if(d.data.length < 250 || page >= 8) break;
+    page++;
+  }
+  return all;
+}
+function speciesCards(name, seq){
+  const q = 'name:"' + name.replace(/["\\]/g, " ") + '" supertype:Pokémon';
+  return cachedFetch("col:" + name.toLowerCase(), () => fetchAllCards(q), fresh => {
+    remember(fresh);
+    if(seq === colSeq && colCards[name]){ colCards[name] = fresh; if(VIEW === "collecting") keepScroll(renderCollecting); }
+  });
+}
+async function pickSpecies(term){
+  term = String(term || "").trim().replace(/\s+/g, " ");
+  if(term.toLowerCase() === colName.toLowerCase() && Object.keys(colCards).length) return;
+  const seq = ++colSeq;
+  colError = ""; colLineDone = false; colHidden.clear(); colMissing.clear();
+  if(term.length < 2){ colName = ""; colCards = {}; colBusy = false; if(VIEW === "collecting") renderCollecting(); return; }
+  colBusy = true; colName = term; colCards = {};
+  if(VIEW === "collecting") renderCollecting();
+  try{
+    let name = term, cards = await speciesCards(term, seq);
+    if(seq !== colSeq) return;
+    if(cards.length){
+      // the name as it's printed ("Mr. Mime", not "mr. mime")
+      const re = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+      const hit = cards.map(c => re.exec(c.name)).find(Boolean);
+      if(hit) name = hit[0];
+    }else{
+      const found = await cachedFetch("colfind:" + term.toLowerCase(), async () =>
+        (await getJSON(API + "/cards?q=" + encodeURIComponent('name:"*' + term.replace(/["\\]/g, " ") + '*" supertype:Pokémon')
+          + "&orderBy=-set.releaseDate&pageSize=60")).data);
+      if(seq !== colSeq) return;
+      const tally = {};
+      for(const c of found){ const b = colBase(c.name); if(b.toLowerCase().includes(term.toLowerCase())) tally[b] = (tally[b] || 0) + 1; }
+      const best = Object.entries(tally).sort((a, b) => b[1] - a[1] || a[0].length - b[0].length)[0];
+      if(!best) throw new Error("No Pokémon called “" + term + "” — check the spelling.");
+      name = best[0];
+      cards = await speciesCards(name, seq);
+      if(seq !== colSeq) return;
+    }
+    remember(cards);
+    colName = name; colCards = {}; colCards[name] = cards;
+    colBusy = false;
+    if(VIEW === "collecting") renderCollecting();
+    if(colEvo) loadLine(seq);
+  }catch(e){
+    if(seq !== colSeq) return;
+    colBusy = false; colError = e.message;
+    if(VIEW === "collecting") renderCollecting();
+  }
+}
+async function loadLine(seq){
+  if(colLineBusy || colLineDone) return;
+  colLineBusy = true;
+  if(VIEW === "collecting") keepScroll(renderCollecting);
+  const known = new Set(Object.keys(colCards).map(n => n.toLowerCase()));
+  let frontier = Object.keys(colCards);
+  for(let step = 0; step < 3 && frontier.length; step++){
+    const next = new Set();
+    for(const n of frontier) for(const c of colCards[n] || []){
+      // only this Pokémon's own cards — a TAG TEAM like "Charizard & Braixen-GX" would drag in
+      // Braixen's whole line
+      if(colBase(c.name).toLowerCase() !== n.toLowerCase()) continue;
+      if(c.evolvesFrom) next.add(colBase(c.evolvesFrom));
+      for(const t of c.evolvesTo || []) next.add(colBase(t));
+    }
+    // skip variants of a Pokémon already in the line ("Charizard G" is Charizard's cards again)
+    const word = (big, small) => new RegExp("(^|[^a-z])" + small.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, "\\$&") + "([^a-z]|$)").test(big.toLowerCase());
+    const todo = [...next].filter(n => n && !known.has(n.toLowerCase()) && ![...known].some(k => word(n, k)))
+      .slice(0, Math.max(0, COL_MAX_SPECIES - known.size));
+    if(!todo.length) break;
+    todo.forEach(n => known.add(n.toLowerCase()));
+    let got = await Promise.allSettled(todo.map(n => speciesCards(n, seq)));
+    if(seq !== colSeq){ colLineBusy = false; return; }
+    // the free API fails whole requests now and then; give the ones that failed another go
+    const failed = todo.filter((n, i) => got[i].status === "rejected");
+    if(failed.length){
+      await sleep(3000);
+      const again = await Promise.allSettled(failed.map(n => speciesCards(n, seq)));
+      if(seq !== colSeq){ colLineBusy = false; return; }
+      got = got.map((r, i) => r.status === "rejected" ? again[failed.indexOf(todo[i])] : r);
+    }
+    const added = [];
+    got.forEach((r, i) => {
+      if(r.status === "fulfilled" && r.value.length){ remember(r.value); colCards[todo[i]] = r.value; added.push(todo[i]); colMissing.delete(todo[i]); }
+      else if(r.status === "rejected") colMissing.add(todo[i]);
+    });
+    frontier = added;
+    if(VIEW === "collecting") keepScroll(renderCollecting);
+  }
+  colLineBusy = false;
+  colLineDone = true;
+  if(seq === colSeq && VIEW === "collecting") keepScroll(renderCollecting);
+}
+async function retryColMissing(){
+  const seq = colSeq, names = [...colMissing];
+  colMissing.clear(); colLineBusy = true; keepScroll(renderCollecting);
+  const got = await Promise.allSettled(names.map(n => speciesCards(n, seq)));
+  if(seq !== colSeq) return;
+  got.forEach((r, i) => {
+    if(r.status === "fulfilled" && r.value.length){ remember(r.value); colCards[names[i]] = r.value; }
+    else if(r.status === "rejected") colMissing.add(names[i]);
+  });
+  colLineBusy = false;
+  if(VIEW === "collecting") keepScroll(renderCollecting);
+}
+function setColEvo(on){
+  colEvo = !!on;
+  renderCollecting();
+  if(colEvo && colName && !colLineDone) loadLine(colSeq);
+}
+function toggleColSpecies(n){
+  if(colHidden.has(n)) colHidden.delete(n); else colHidden.add(n);
+  keepScroll(renderCollecting);
+}
+/* Where each Pokémon sits in the line: 0 for a basic, +1 per evolution, from the cards' evolvesFrom. */
+function colDepths(){
+  const names = Object.keys(colCards), depth = {};
+  const fromOf = n => {
+    const t = {};
+    for(const c of colCards[n]) if(c.evolvesFrom){ const b = colBase(c.evolvesFrom); t[b] = (t[b] || 0) + 1; }
+    const best = Object.entries(t).sort((a, b) => b[1] - a[1])[0];
+    return best ? best[0] : null;
+  };
+  const d = (n, hops) => {
+    if(n in depth) return depth[n];
+    if(hops > 6) return 0;
+    const f = fromOf(n);
+    const match = f && names.find(x => x.toLowerCase() === f.toLowerCase());
+    return depth[n] = match ? d(match, hops + 1) + 1 : (f ? 1 : 0);
+  };
+  names.forEach(n => d(n, 0));
+  return depth;
+}
+function colVisible(){
+  const depth = colDepths();
+  const names = Object.keys(colCards).filter(n => (colEvo || n === colName) && !colHidden.has(n))
+    .sort((a, b) => depth[a] - depth[b] || a.localeCompare(b));
+  const seen = new Set(), list = [];
+  names.forEach((n, i) => (colCards[n] || []).forEach(c => { if(!seen.has(c.id)){ seen.add(c.id); list.push({c: c, line: i}); } }));
+  return {names: names, depth: depth, list: list};
+}
+function colSortList(list){
+  const v = x => { const r = cardValue(x.c); return r ? r.v : null; };
+  const date = x => (x.c.set && x.c.set.releaseDate) || "";
+  const out = list.slice();
+  if(colSort === "line") out.sort((a, b) => a.line - b.line || date(b).localeCompare(date(a)));
+  if(colSort === "new")  out.sort((a, b) => date(b).localeCompare(date(a)));
+  if(colSort === "old")  out.sort((a, b) => date(a).localeCompare(date(b)));
+  if(colSort === "hi" || colSort === "lo") out.sort((a, b) => (v(a) == null) - (v(b) == null) || (colSort === "hi" ? v(b) - v(a) : v(a) - v(b)));
+  return out.map(x => x.c);
+}
+function renderCollecting(){
+  if(VIEW !== "collecting") return;
+  const head = '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>Collecting</h1>'
+    + '<div class="tagline">Pick a Pokémon and see every card of it — what collecting them all costs, and where that could go</div></div></div>';
+  const examples = '<div class="egs">' + COL_EXAMPLES.map(n => '<button onclick="exampleCollect(\'' + n + '\')">' + n + '</button>').join("") + '</div>';
+  countEl.textContent = "";
+  if(!colName){
+    app.innerHTML = head + '<div class="hint" style="padding-top:34px"><h3>Which Pokémon do you want to collect?</h3>'
+      + 'Type its name in the box at the top, or pick one:' + examples + '</div>';
+    return;
+  }
+  if(colError){
+    app.innerHTML = head + '<div class="hint" style="padding-top:34px"><h3>' + esc(colError) + '</h3>Try another name:' + examples
+      + '<div class="egs"><button class="btn-gold" onclick="colName=\'\';pickSpecies(qIn.value)">Try again</button></div></div>';
+    return;
+  }
+  if(colBusy){
+    app.innerHTML = head + '<div class="msg"><div class="spinner"></div>Finding every ' + esc(colName) + ' card…</div>';
+    return;
+  }
+  const vis = colVisible(), cards = vis.list;
+  const others = Object.keys(colCards).filter(n => n !== colName);
+  const vals = cards.map(x => cardValue(x.c));
+  const total = vals.reduce((t, r) => t + (r ? r.v : 0), 0);
+  const estN = vals.filter(r => r && r.est).length, noPrice = vals.filter(r => !r).length;
+  const mine = cards.filter(x => owns(x.c.id));
+  const mineVal = mine.reduce((t, x) => { const r = cardValue(x.c); return t + (r ? r.v : 0); }, 0);
+  countEl.textContent = cards.length + " cards";
+
+  const lineChips = colEvo
+    ? '<div class="colline">' + vis.names.concat([...colHidden].filter(n => colCards[n])).filter((n, i, a) => a.indexOf(n) === i)
+        .sort((a, b) => vis.depth[a] - vis.depth[b]).map((n, i, a) =>
+          (i && vis.depth[n] > vis.depth[a[i - 1]] ? '<i>→</i>' : '')
+          + '<button class="' + (colHidden.has(n) ? "off" : "") + '" data-n="' + esc(n) + '" onclick="toggleColSpecies(this.dataset.n)" title="'
+          + (colHidden.has(n) ? "Add back" : "Leave out") + '">' + esc(n) + '<b>' + colCards[n].length + '</b></button>').join("")
+        + (colLineBusy ? '<i><span class="spinner" style="display:inline-block;width:13px;height:13px;margin:0 5px -2px 0;border-width:2px"></span>finding its evolutions…</i>'
+           : colMissing.size ? '<button onclick="retryColMissing()">Couldn\'t load ' + esc([...colMissing].join(", ")) + ' — try again</button>'
+           : !others.length ? '<i>' + esc(colName) + ' doesn\'t evolve from or into anything</i>' : '')
+        + '</div>'
+    : '';
+
+  app.innerHTML = head
+    + '<div class="set-head" style="margin-top:14px;display:block">'
+    +   '<div class="colhead"><h2>' + esc(colName) + '</h2>'
+    +     '<label class="colevo"><input type="checkbox"' + (colEvo ? " checked" : "") + ' onchange="setColEvo(this.checked)">Also collect its evolutions</label>'
+    +   '</div>'
+    +   lineChips
+    +   '<div class="stats" style="margin-top:12px">'
+    +     '<div>Cards to collect<b>' + cards.length + '</b></div>'
+    +     '<div>To collect them all<b style="color:' + (estN ? "var(--gold)" : "#7ee38a") + '">' + (estN ? "~" : "") + money(total) + '</b></div>'
+    +     '<div>You already have<b>' + mine.length + ' <span style="font-size:12px;color:var(--dim);font-weight:400">(' + money(mineVal) + ')</span></b></div>'
+    +     '<div>Still to get<b style="color:#7ee38a">' + (estN ? "~" : "") + money(Math.max(0, total - mineVal)) + '</b></div>'
+    +   '</div>'
+    +   '<div style="color:var(--dim);font-size:12px;margin-top:6px">Each card counted at its cheapest version.'
+    +     (estN ? ' ' + estN + ' of them have no sale price yet, so they\'re estimates (marked ~).' : '')
+    +     (noPrice ? ' ' + noPrice + ' have no price at all and count as $0.' : '') + '</div>'
+    + '</div>'
+    + '<div class="tools">'
+    +   '<button class="btn-gold" onclick="colFuture=!colFuture;keepScroll(renderCollecting)">' + (colFuture ? "Hide the value estimate" : "📈 Estimated value in the coming years") + '</button>'
+    +   '<select aria-label="Sort" onchange="colSort=this.value;keepScroll(renderCollecting)">'
+    +     [["line","Evolution order"],["new","Newest first"],["old","Oldest first"],["hi","Price: high to low"],["lo","Price: low to high"]]
+            .map(o => '<option value="' + o[0] + '"' + (o[0] === colSort ? " selected" : "") + '>' + o[1] + '</option>').join("")
+    +   '</select>'
+    +   estLegend(cards.map(x => x.c))
+    + '</div>'
+    + (colFuture ? colFutureHTML(cards.map(x => x.c), total, estN) : '')
+    + '<div class="found">' + colSortList(cards).map(findTile).join("") + '</div>';
+}
+function colFutureHTML(cards, total, estN){
+  const f = (rate, y) => total * Math.pow(1 + rate, y);
+  const rows = COL_YEARS.map(y =>
+    '<tr><td>In ' + y + ' year' + (y === 1 ? "" : "s") + ' (' + (new Date().getFullYear() + y) + ')</td>'
+    + '<td class="lo">' + money(f(COL_RATES.lo, y)) + '</td><td class="mid">' + money(f(COL_RATES.mid, y)) + '</td><td class="hi">' + money(f(COL_RATES.hi, y)) + '</td></tr>').join("");
+  // the one real signal: Cardmarket's current trend against its own 30-day average
+  let trend = 0, avg = 0, n = 0;
+  for(const c of cards){
+    const cm = (c.cardmarket && c.cardmarket.prices) || {};
+    if(cm.trendPrice > 0 && cm.avg30 > 0){ trend += cm.trendPrice; avg += cm.avg30; n++; }
+  }
+  const move = n >= 5 ? trend / avg - 1 : null;
+  const pct = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+  return '<div class="future"><h3>What collecting every ' + esc(colName) + ' card might cost later</h3>'
+    + '<p>Right now: <b>' + (estN ? "~" : "") + money(total) + '</b> for all ' + cards.length + ' cards.'
+    + (move != null ? ' Lately these cards have been <b style="color:' + (move >= 0 ? "#7ee38a" : "#ffb4b4") + '">' + (Math.abs(move) < 0.005 ? "holding steady" : (move > 0 ? "going up" : "going down")) + '</b> — '
+        + 'their European (Cardmarket) prices are ' + pct(move) + ' against their 30-day average, across ' + n + ' cards.' : '') + '</p>'
+    + '<div class="ftable"><table><thead><tr><th></th><th>If prices fall<br>6% a year</th><th>If they grow<br>4% a year</th><th>If they grow<br>12% a year</th></tr></thead>'
+    + '<tbody><tr class="now"><td>Today</td><td colspan="3" style="text-align:center">' + (estN ? "~" : "") + money(total) + '</td></tr>' + rows + '</tbody></table></div>'
+    + '<p><b>These are what-ifs, not a prediction.</b> Nobody knows what card prices will do, and this site has no price history to go on — '
+    + 'each column just shows where today\'s total ends up if prices changed by that much every year. Popular Pokémon and older cards have often gone up over time, '
+    + 'but reprints, new sets and changing trends can push prices down, and a card you collect is only worth what someone will pay for it.</p>'
+    + '</div>';
+}
+
 /* ---------------- energy tab ----------------
    Energy cards on their own, so finding what one is worth (or adding it to the collection) isn't
    a hunt through every Pokémon. All Energy cards (~400) load in one go through the saved-copy
@@ -1274,7 +1594,7 @@ function setTile(s){
 /* ---------------- set detail ---------------- */
 async function openSet(id){
   const s = SETS.find(x => x.id === id); if(!s) return;
-  if(VIEW === "search" || VIEW === "energy") qIn.value = "";   // that box held a card name, not a set filter
+  if(VIEW === "search" || VIEW === "energy" || VIEW === "collecting") qIn.value = "";   // that box held a card name, not a set filter
   current = s; VIEW = "set";
   setTab();
   qIn.placeholder = "Search sets…";
@@ -2041,14 +2361,14 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape"){
     if(document.getElementById("signin")) closeSignIn(true);
     else if(document.getElementById("modal")) closeCard();
-    else if(VIEW === "set" || VIEW === "search" || VIEW === "energy") showSets();
+    else if(VIEW === "set" || VIEW === "search" || VIEW === "energy" || VIEW === "collecting") showSets();
   }
 });
 
 /* ---------------- misc ---------------- */
 function showSets(){
   closeCard();
-  if(VIEW === "search" || VIEW === "energy") qIn.value = "";   // the set list filters on the same box
+  if(VIEW === "search" || VIEW === "energy" || VIEW === "collecting") qIn.value = "";   // the set list filters on the same box
   qIn.placeholder = "Search sets…";
   VIEW = "sets";
   setTab();
@@ -2064,6 +2384,7 @@ function fmtDate(d){
 qIn.addEventListener("input", () => {
   if(VIEW === "search") onSearchTyping();
   else if(VIEW === "energy") drawEnergy();
+  else if(VIEW === "collecting") onCollectTyping();
   else if(VIEW === "sets") renderSets();
   else showSets();                       // typing while inside a set backs out to the set list
 });

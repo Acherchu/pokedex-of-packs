@@ -18,6 +18,10 @@ deals you a realistic 9-card pull.
 **Energy** — every Energy card in one place. Pick the energy type (Fire, Water…), Basic or
 Special, search by name or set, and sort by price.
 
+**Collecting** (under *View more*) — pick a Pokémon and see every card of it ever printed, with
+or without its evolutions, what collecting them all would cost, how much of that you already have,
+and what the total could be in the years ahead (as what-ifs, not predictions).
+
 **Card search** — search every card ever printed by name, pick a Pokémon type (Fire, Water,
 Psychic…), or both. Each *printing* comes back separately
 with its set, card number, rarity and price, because the same Charizard exists in dozens of sets
