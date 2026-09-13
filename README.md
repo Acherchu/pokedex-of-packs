@@ -20,7 +20,8 @@ Special, search by name or set, and sort by price.
 
 **Collecting** (under *View more*) — pick a Pokémon and see every card of it ever printed, with
 or without its evolutions, what collecting them all would cost, how much of that you already have,
-and what the total could be in the years ahead (as what-ifs, not predictions).
+and what the total could be in the years ahead (as what-ifs, not predictions). A graph shows how
+much those same cards cost on past dates, back to February 2024 (as far as free price records go).
 
 **Card search** — search every card ever printed by name, pick a Pokémon type (Fire, Water,
 Psychic…), or both. Each *printing* comes back separately

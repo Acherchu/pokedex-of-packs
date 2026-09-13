@@ -29,6 +29,11 @@ Sections, switched from the header:
 - `index.html` — the entire site. No build step, no dependencies. Double-click it and it runs.
 - `update-pack-prices.py` — dev tool. Refreshes the pack prices baked into `index.html`.
   Not needed to run the site.
+- `update-price-history.py` — dev tool. Builds `price-history.json` (below). Needs `py7zr`
+  (`python -m pip install --user py7zr`); caches snapshots in `.history-cache/` (git-ignored).
+- `price-history.json` — past card prices for the Collecting graph (~550 KB). The one deliberate
+  exception to "one file": it's fetched only when that graph opens, so nothing else is slowed, and
+  the site still works without it (opened from disk, the graph says it needs the website).
 
 ## Run it
 
@@ -227,6 +232,26 @@ picks the Pokémon (debounced 500ms, `pickSpecies`), with example buttons.
   one real signal: Cardmarket `trendPrice` vs `avg30` summed over the cards (shown when ≥5 have both).
   Keep the "these are what-ifs, not a prediction" wording; never present one number as what it
   *will* be worth.
+
+- **Price history graph** (button "📊 How prices have changed", `colHistoryHTML` + `drawHistoryChart`).
+  The user asked for "a graph of how the prices have changed every year previously". pokemontcg.io
+  has only today's prices and **nothing free has card prices before Feb 2024**; tcgcsv.com keeps a
+  daily TCGplayer snapshot since 2024-02-08. `update-price-history.py` takes one every 6 months
+  (Feb 8 2024, then Aug 1 / Feb 1), keeps category 3, maps products to pokemontcg ids via the same
+  set→group matching as the pack script plus `EXTRA_GROUPS` (promos, McDonald's, Radiant
+  Collections — without these 35 of Charizard's 188 cards had no history) and the printed number
+  ("199/165" → `sv3pt5-199`, "SVP 047" → `svp-47`). Output `{d: dates, c: {setId: {num: [cents…]}}}`,
+  cheapest printing per date, 0 = no price. **Re-run it when a new Feb 1 / Aug 1 passes** and commit
+  the JSON. The page fetches it through `cachedFetch("price-history")`.
+  The line is **the same cards on every date** (only cards priced on every snapshot and today, via
+  `cardPrice`) so a new set arriving doesn't look like prices rising; the text says how many newer
+  cards were left out and how many have no records. Single series → no legend. Colour **#1baf7a**,
+  validated with the dataviz validator against the `#12295c` panel (the site's `#ffcb05` gold failed
+  the lightness band). 2px line, 10% wash, r4.5 dots with a 2px surface ring, hairline grid, clean
+  y ticks ($0/$5k…), end label on the last point only, crosshair + tooltip that snaps to the nearest
+  date (pointer, tap, and ← → keys when focused), a "Show as a table" view with change per step.
+  Width is measured from the container and redrawn on resize. Spot-checked: 151 Charizard ex SIR
+  $118.65 → $368.75, Evolving Skies Umbreon VMAX alt $540 → $2,416, Surging Sparks blank before release.
 
 Tested: Charizard 188 cards (Charmander 46 → Charmeleon 35 → Charizard 107, ~$26,795), Eevee all 8
 evolutions (386 cards), Gengar with Gastly/Haunter, Mew with none, "chariz", a nonsense name, the

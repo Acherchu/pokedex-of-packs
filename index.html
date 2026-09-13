@@ -332,6 +332,24 @@
   .ftable th{color:var(--dim);font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
   .ftable td.lo{color:#ffb4b4}.ftable td.mid{color:var(--gold);font-weight:700}.ftable td.hi{color:#7ee38a}
   .ftable tr.now td{color:var(--text);font-weight:700}
+  .ftable td.up{color:#7ee38a}.ftable td.down{color:#ffb4b4}
+  /* price history chart — series #1baf7a (validated against the #12295c panel: lightness band,
+     chroma, 3:1 contrast all pass; the site's #ffcb05 gold failed the lightness band) */
+  .hchart{position:relative;margin:12px 0 6px;touch-action:pan-y}
+  .hchart svg{display:block;width:100%;height:auto;overflow:visible}
+  .hchart .grid{stroke:rgba(255,255,255,.08);stroke-width:1}
+  .hchart .axis{fill:var(--dim);font-size:11.5px;font-variant-numeric:tabular-nums}
+  .hchart .line{fill:none;stroke:#1baf7a;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+  .hchart .wash{fill:#1baf7a;opacity:.1}
+  .hchart .dot{fill:#1baf7a;stroke:#12295c;stroke-width:2}
+  .hchart .endlab{fill:var(--text);font-size:12.5px;font-weight:700}
+  .hchart .cross{stroke:rgba(255,255,255,.35);stroke-width:1}
+  .hchart .tip{position:absolute;pointer-events:none;background:var(--navy);border:1px solid var(--line);border-radius:9px;
+    padding:7px 10px;font-size:12.5px;color:var(--dim);white-space:nowrap;box-shadow:var(--shadow);transform:translate(-50%,-110%)}
+  .hchart .tip b{display:block;color:var(--text);font-size:15px}
+  .hchart .tip i{display:inline-block;width:12px;height:2px;background:#1baf7a;vertical-align:middle;margin-right:5px;font-style:normal}
+  .hchart:focus{outline:2px solid var(--gold);outline-offset:4px;border-radius:6px}
+  details.htable summary{cursor:pointer;color:var(--dim);font-size:13px;margin-top:4px}
 
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
@@ -1061,7 +1079,8 @@ const COL_MAX_SPECIES = 12, COL_EXAMPLES = ["Charizard","Pikachu","Eevee","Genga
 const COL_PREFIX = /^(?:Dark|Light|Shining|Radiant|Alolan|Galarian|Hisuian|Paldean|Mega|M|Detective|Surfing|Flying|Imposter|Special Delivery|Team Rocket's|[A-Z][A-Za-z.]*'s)\s+/;
 let colName = "", colCards = {}, colEvo = true, colHidden = new Set(), colSort = "line", colSeq = 0;
 let colBusy = false, colLineBusy = false, colLineDone = false, colError = "", colFuture = false, colTypeTimer = null;
-const colMissing = new Set();   // evolutions that couldn't be loaded (API failed) — offered as a retry
+const colMissing = new Set();
+let colHistory = false;          // is the price-history panel open   // evolutions that couldn't be loaded (API failed) — offered as a retry
 
 function colBase(n){
   let x = species(n), prev;
@@ -1298,6 +1317,7 @@ function renderCollecting(){
     +     (noPrice ? ' ' + noPrice + ' have no price at all and count as $0.' : '') + '</div>'
     + '</div>'
     + '<div class="tools">'
+    +   '<button class="btn-gold" onclick="colHistory=!colHistory;keepScroll(renderCollecting)">' + (colHistory ? "Hide the price history" : "📊 How prices have changed") + '</button>'
     +   '<button class="btn-gold" onclick="colFuture=!colFuture;keepScroll(renderCollecting)">' + (colFuture ? "Hide the value estimate" : "📈 Estimated value in the coming years") + '</button>'
     +   '<select aria-label="Sort" onchange="colSort=this.value;keepScroll(renderCollecting)">'
     +     [["line","Evolution order"],["new","Newest first"],["old","Oldest first"],["hi","Price: high to low"],["lo","Price: low to high"]]
@@ -1305,9 +1325,166 @@ function renderCollecting(){
     +   '</select>'
     +   estLegend(cards.map(x => x.c))
     + '</div>'
+    + (colHistory ? '<div class="future" id="colhist">' + colHistoryHTML(cards.map(x => x.c)) + '</div>' : '')
     + (colFuture ? colFutureHTML(cards.map(x => x.c), total, estN) : '')
     + '<div class="found">' + colSortList(cards).map(findTile).join("") + '</div>';
+  if(colHistory) drawHistoryChart();
 }
+/* ---- price history ----
+   price-history.json is built by update-price-history.py from tcgcsv.com's daily TCGplayer
+   snapshots (nothing free goes back before Feb 2024): {d: [dates], c: {setId: {number: [cents…]}}},
+   each card at its cheapest printing's market price that day. It's a separate file, fetched only
+   when this panel opens, through the saved-copy cache — so it doesn't slow the rest of the site, and
+   opening index.html straight from disk just can't show it.
+   The line is the SAME cards on every date: only cards with a price on every snapshot and today
+   count, so a new set arriving doesn't look like prices rising. Today's point is the live price. */
+let historyData = null, historyError = "", historyBusy = false;
+function loadHistory(){
+  if(historyData || historyBusy) return;
+  historyBusy = true; historyError = "";
+  cachedFetch("price-history", async () => {
+    const r = await fetch("price-history.json", {cache: "no-cache"});
+    if(!r.ok) throw new Error("price history file missing (" + r.status + ")");
+    return r.json();
+  }, fresh => { historyData = fresh; if(VIEW === "collecting" && colHistory) keepScroll(renderCollecting); })
+    .then(d => { historyData = d; })
+    .catch(e => { historyError = location.protocol === "file:" ? "The price history only loads on the website, not from a file on your computer." : "Couldn't load the price history — " + e.message; })
+    .finally(() => { historyBusy = false; if(VIEW === "collecting" && colHistory) keepScroll(renderCollecting); });
+}
+function historyRow(c){
+  if(!historyData) return null;
+  const i = c.id.indexOf("-");
+  const sid = c.id.slice(0, i), num = c.id.slice(i + 1);
+  const bySet = historyData.c[sid];
+  if(!bySet) return null;
+  return bySet[num] || bySet[/^\d+$/.test(num) ? String(parseInt(num, 10)) : num] || null;
+}
+function historySeries(cards){
+  const dates = historyData.d, sums = dates.map(() => 0);
+  let today = 0, used = 0, partial = 0, none = 0;
+  for(const c of cards){
+    const row = historyRow(c), now = cardPrice(c);
+    if(!row){ none++; continue; }
+    if(row.some(v => !v) || now == null){ partial++; continue; }
+    row.forEach((v, i) => sums[i] += v / 100);
+    today += now; used++;
+  }
+  const pts = dates.map((d, i) => ({t: new Date(d + "T12:00:00"), v: sums[i], label: fmtDate(d.replace(/-/g, "/"))}));
+  pts.push({t: new Date(), v: today, label: "Today", today: true});
+  return {pts: pts, used: used, partial: partial, none: none};
+}
+function colHistoryHTML(cards){
+  if(!historyData){
+    loadHistory();
+    return '<h3>How prices have changed</h3>' + (historyError
+      ? '<p>' + esc(historyError) + '</p><p><button class="back" onclick="historyError=\'\';loadHistory()">Try again</button></p>'
+      : '<div class="msg" style="padding:18px 0"><div class="spinner"></div>Loading price history…</div>');
+  }
+  const h = historySeries(cards), pts = h.pts;
+  const pct = x => (x >= 0 ? "+" : "") + (x * 100).toFixed(1) + "%";
+  if(h.used === 0){
+    return '<h3>How prices have changed</h3><p>None of these cards have prices going back to '
+      + esc(pts[0].label) + ' — they\'re all too new, or TCGplayer never listed them.</p>';
+  }
+  const first = pts[0], last = pts[pts.length - 1];
+  const years = (last.t - first.t) / 31557600000;
+  const cagr = first.v > 0 ? Math.pow(last.v / first.v, 1 / years) - 1 : null;
+  const rows = pts.map((p, i) => {
+    const prev = i ? pts[i - 1].v : null, ch = prev ? p.v / prev - 1 : null;
+    return '<tr' + (p.today ? ' class="now"' : '') + '><td>' + esc(p.label) + '</td><td>' + money(p.v) + '</td>'
+      + '<td class="' + (ch == null ? "" : ch >= 0 ? "up" : "down") + '">' + (ch == null ? "—" : pct(ch)) + '</td></tr>';
+  }).join("");
+  return '<h3>How prices have changed</h3>'
+    + '<p>What the same <b>' + h.used + '</b> ' + esc(colName) + ' card' + (h.used === 1 ? "" : "s") + ' cost on each date, at TCGplayer market prices. '
+    + 'From ' + esc(first.label) + ' to today they went from <b>' + money(first.v) + '</b> to <b>' + money(last.v) + '</b> — '
+    + '<b style="color:' + (last.v >= first.v ? "#7ee38a" : "#ffb4b4") + '">' + pct(last.v / first.v - 1) + '</b>'
+    + (cagr != null && years > 1 ? ', about ' + pct(cagr) + ' a year' : '') + '.</p>'
+    + '<div class="hchart" id="hchart" tabindex="0" aria-label="Line chart of what these cards cost on each date; use the arrow keys to read each point"></div>'
+    + '<details class="htable"><summary>Show as a table</summary><div class="ftable"><table><thead><tr><th>Date</th><th>These cards cost</th><th>Change since the last date</th></tr></thead><tbody>'
+    + rows + '</tbody></table></div></details>'
+    + '<p>Price history only goes back to February 2024 — that\'s as far as free price records go. '
+    + (h.partial ? h.partial + ' newer card' + (h.partial === 1 ? " isn't" : "s aren't") + ' in the line because ' + (h.partial === 1 ? "it" : "they") + ' didn\'t have a price on every date. ' : '')
+    + (h.none ? h.none + ' card' + (h.none === 1 ? " has" : "s have") + ' no price records at all. ' : '')
+    + 'Past prices don\'t tell you what happens next.</p>';
+}
+function drawHistoryChart(){
+  const box = document.getElementById("hchart");
+  if(!box || !historyData) return;
+  const cards = colVisible().list.map(x => x.c);
+  const pts = historySeries(cards).pts;
+  const W = Math.max(300, box.clientWidth), H = 240, L = 62, R = 74, T = 14, B = 30;
+  const t0 = pts[0].t.getTime(), t1 = pts[pts.length - 1].t.getTime();
+  const maxV = Math.max(...pts.map(p => p.v), 1);
+  const step = (() => { const raw = maxV / 5, mag = Math.pow(10, Math.floor(Math.log10(raw))); return [1, 2, 2.5, 5, 10].map(m => m * mag).find(s => s >= raw); })();
+  const top = Math.ceil(maxV / step) * step;
+  const x = t => L + (t - t0) / (t1 - t0 || 1) * (W - L - R);
+  const y = v => T + (1 - v / top) * (H - T - B);
+  const short = v => v >= 1000 ? "$" + (v / 1000).toLocaleString("en-US", {maximumFractionDigits: 1}) + "k" : "$" + Math.round(v);
+  let svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" width="' + W + '" height="' + H + '" role="img" aria-hidden="true">';
+  for(let v = 0; v <= top + 1e-9; v += step){
+    svg += '<line class="grid" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v) + '" y2="' + y(v) + '"/>'
+      + '<text class="axis" x="' + (L - 8) + '" y="' + (y(v) + 4) + '" text-anchor="end">' + short(v) + '</text>';
+  }
+  // x labels: first, last, and each date that has room
+  let lastX = -1e9;
+  pts.forEach((p, i) => {
+    const px = x(p.t.getTime()), label = p.today ? "Today" : p.label.replace(/ \d+,/, "");
+    if(i && i < pts.length - 1 && (px - lastX < 62 || x(pts[pts.length - 1].t.getTime()) - px < 62)) return;
+    svg += '<text class="axis" x="' + px + '" y="' + (H - 8) + '" text-anchor="middle">' + esc(label) + '</text>';
+    lastX = px;
+  });
+  const path = pts.map((p, i) => (i ? "L" : "M") + x(p.t.getTime()).toFixed(1) + " " + y(p.v).toFixed(1)).join(" ");
+  svg += '<path class="wash" d="' + path + ' L' + x(t1) + ' ' + y(0) + ' L' + x(t0) + ' ' + y(0) + ' Z"/>'
+    + '<path class="line" d="' + path + '"/>'
+    + pts.map(p => '<circle class="dot" r="4.5" cx="' + x(p.t.getTime()) + '" cy="' + y(p.v) + '"/>').join("")
+    + '<text class="endlab" x="' + (x(t1) + 10) + '" y="' + (y(pts[pts.length - 1].v) + 4) + '">' + money(pts[pts.length - 1].v) + '</text>'
+    + '<line class="cross" id="hcross" y1="' + T + '" y2="' + (H - B) + '" x1="-9" x2="-9" style="display:none"/>'
+    + '</svg><div class="tip" id="htip" hidden></div>';
+  box.innerHTML = svg;
+  const tip = box.querySelector("#htip"), cross = box.querySelector("#hcross");
+  let focusIdx = pts.length - 1;
+  const show = i => {
+    focusIdx = i;
+    const p = pts[i], prev = i ? pts[i - 1] : null, px = x(p.t.getTime());
+    const scale = box.clientWidth / W;
+    cross.setAttribute("x1", px); cross.setAttribute("x2", px); cross.style.display = "";
+    tip.hidden = false;
+    tip.textContent = "";
+    const b = document.createElement("b"); b.textContent = money(p.v);
+    const line = document.createElement("div");
+    const key = document.createElement("i"); line.appendChild(key); line.appendChild(document.createTextNode(p.today ? "Today" : p.label));
+    tip.appendChild(b); tip.appendChild(line);
+    if(prev && prev.v){
+      const ch = p.v / prev.v - 1, d = document.createElement("div");
+      d.textContent = (ch >= 0 ? "+" : "") + (ch * 100).toFixed(1) + "% since " + (prev.today ? "then" : prev.label);
+      tip.appendChild(d);
+    }
+    tip.style.left = Math.min(Math.max(px * scale, 70), box.clientWidth - 70) + "px";
+    tip.style.top = (y(p.v) * scale) + "px";
+  };
+  const hide = () => { tip.hidden = true; cross.style.display = "none"; };
+  const nearest = ev => {
+    const r = box.getBoundingClientRect(), mx = (ev.clientX - r.left) / (r.width / W);
+    let best = 0;
+    pts.forEach((p, i) => { if(Math.abs(x(p.t.getTime()) - mx) < Math.abs(x(pts[best].t.getTime()) - mx)) best = i; });
+    return best;
+  };
+  box.onpointermove = ev => show(nearest(ev));
+  box.onpointerdown = ev => show(nearest(ev));
+  box.onpointerleave = hide;
+  box.onblur = hide;
+  box.onfocus = () => show(focusIdx);
+  box.onkeydown = ev => {
+    if(ev.key === "ArrowRight"){ ev.preventDefault(); show(Math.min(pts.length - 1, focusIdx + 1)); }
+    if(ev.key === "ArrowLeft"){ ev.preventDefault(); show(Math.max(0, focusIdx - 1)); }
+  };
+}
+let historyResize = null;
+window.addEventListener("resize", () => {
+  clearTimeout(historyResize);
+  historyResize = setTimeout(() => { if(VIEW === "collecting" && colHistory) drawHistoryChart(); }, 150);
+});
+
 function colFutureHTML(cards, total, estN){
   const f = (rate, y) => total * Math.pow(1 + rate, y);
   const rows = COL_YEARS.map(y =>
