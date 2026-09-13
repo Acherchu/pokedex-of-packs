@@ -94,6 +94,8 @@
   .vars button.on{border-color:var(--gold);background:rgba(255,203,5,.10);color:var(--gold);font-weight:700}
   .vars button small{display:block;font-size:11px;color:var(--dim);font-weight:400}
   .vars button.on small{color:var(--gold);opacity:.8}
+  .vars button.missing{border-style:dashed}
+  .holoalts .found{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-top:10px}
   .bigprice{
     display:flex;align-items:baseline;gap:10px;background:var(--panel2);border:1px solid var(--line);
     border-radius:12px;padding:12px 16px;margin-bottom:10px;
@@ -148,6 +150,11 @@
   .addbar button.own:hover{border-color:#7ee38a;color:#7ee38a}
   .tagline{color:var(--gold);font-weight:600;font-size:15px;margin:-2px 0 12px}
   .find .fslot{color:var(--gold);font-size:11.5px;font-weight:600;margin-top:3px}
+  .find .fprint{color:#9fd0ff;font-size:11.5px;font-weight:600;margin-top:3px}
+  .find .fprint.unset{color:var(--dim);font-weight:400;font-style:italic}
+  .copy .vars{margin-bottom:6px}
+  .copy .copyhint{color:var(--dim);font-size:12.5px;line-height:1.45}
+  .copy .copyhint b{color:var(--gold)}
 
   /* ---------- binder slot (card sheet) ---------- */
   .binder{margin-bottom:6px}
@@ -168,8 +175,23 @@
   .sloterr:empty{display:none}
   .ownmark{
     position:absolute;top:6px;right:6px;background:rgba(126,227,138,.92);color:#0c2412;
-    font-weight:900;font-size:11px;border-radius:50%;width:19px;height:19px;line-height:19px;text-align:center;
+    font-weight:900;font-size:11px;border-radius:999px;min-width:19px;height:19px;line-height:19px;text-align:center;padding:0 5px;
   }
+  .find .fqty{color:#7ee38a;font-size:11.5px;font-weight:600;margin-top:3px}
+  .qtyrow{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .qtyrow button{
+    width:36px;height:36px;border-radius:9px;border:1px solid var(--line);background:var(--panel2);color:var(--text);
+    font:inherit;font-size:20px;font-weight:700;line-height:1;cursor:pointer;padding:0;
+  }
+  .qtyrow button:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+  .qtyrow button:disabled{opacity:.4;cursor:default}
+  .qtyrow input{
+    width:64px;text-align:center;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;
+    padding:7px 6px;font:inherit;font-size:17px;font-weight:700;outline:none;
+  }
+  .qtyrow input:focus{border-color:var(--gold)}
+  .qtyrow span{color:var(--dim);font-size:13px}
+  .qtyrow span b{color:#7ee38a}
 
   /* ---------- set grid ---------- */
   .sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:28px}
@@ -587,8 +609,25 @@ function snapOf(c){
     // with a _hires twin, newer ones are images.scrydex.com/... where no such twin exists
     img: (c.images && c.images.small) || "", big: (c.images && c.images.large) || "",
     rar: c.rarity || "", t: (c.types || [])[0] || "",
-    v: r ? +r.v.toFixed(2) : null, est: !!(r && r.est)
+    v: r ? +r.v.toFixed(2) : null, est: !!(r && r.est),
+    vs: printPrices(c)                        // each printing's price, so "your copy" can be picked later
   };
+}
+/* A card's price per printing ("normal", "holofoil", "reverseHolofoil", "1stEditionHolofoil"…),
+   market, else mid, else low. null when TCGplayer lists the printing without a price. */
+function printPrices(c){
+  const tp = (c && c.tcgplayer && c.tcgplayer.prices) || {}, out = {};
+  for(const k in tp){
+    const v = tp[k] || {};
+    const n = [v.market, v.mid, v.low].find(x => typeof x === "number" && x > 0);
+    out[k] = n != null ? +n.toFixed(2) : null;
+  }
+  return out;
+}
+const PRINT_ORDER = ["normal","holofoil","reverseHolofoil","1stEditionNormal","1stEdition","1stEditionHolofoil","unlimited","unlimitedHolofoil"];
+function sortPrintings(keys){
+  const at = k => { const i = PRINT_ORDER.indexOf(k); return i < 0 ? 99 : i; };
+  return keys.slice().sort((a, b) => at(a) - at(b));
 }
 /* --- owning --- */
 function owns(id){ return !!OWNED[id]; }
@@ -599,18 +638,140 @@ function toggleOwn(id, ev){
   else{
     const c = CARDS.get(id);
     if(!c) return;
-    OWNED[id] = snapOf(c);
+    const e = OWNED[id] = snapOf(c);
+    // picked a printing in the price list first, then "I have this card"? that's the one you have
+    if(modalCard && modalCard.id === id && modalPicked && e.vs && modalVar in e.vs) applyCopy(e, modalVar);
   }
   saveCollection();
   refreshView();
   const b = document.getElementById("ownbtn");   // the card sheet, if it's open
   if(b) b.outerHTML = ownBtn(id);
+  redrawQty(id);
+  redrawCopy(id);
   redrawBinder(id);
+  if(modalCard && modalCard.id === id && document.getElementById("pricepane")){
+    const keep = modalPicked; selectVar(modalVar); modalPicked = keep;   // heading follows owned / not owned
+  }
 }
 function ownBtn(id){
   const have = owns(id);
   return '<button class="ownbtn' + (have ? " yes" : "") + '" id="ownbtn" onclick="toggleOwn(\'' + id + '\',event)">'
     + (have ? "✓ In your collection" : "✓ I have this card") + '</button>';
+}
+
+/* --- how many you have ---
+   OWNED[id].qty is how many copies of that card you have (missing = 1, so older saves are one
+   copy). Every copy shares the card's picked printing. A card's worth in the collection is its
+   value × qty; the collection shows cards and copies separately. The − button stops at 1 —
+   taking the card out is still the "In your collection" button, so a slip can't delete it. */
+const QTY_MAX = 999;
+function qtyOf(e){ return e && e.qty > 1 ? e.qty : 1; }
+function ownMark(id){ const n = qtyOf(OWNED[id]); return n > 1 ? "×" + n : "✓"; }
+function qtyBlock(id){
+  const e = OWNED[id];
+  if(!e) return '<div id="qtypane"></div>';
+  const n = qtyOf(e), q = "'" + id + "'";
+  return '<div id="qtypane" class="blk"><h4>How many do you have?</h4><div class="qtyrow">'
+    + '<button onclick="setQty(' + q + ',' + (n - 1) + ')"' + (n <= 1 ? " disabled" : "") + ' aria-label="One less">−</button>'
+    + '<input id="qtyin" type="number" min="1" max="' + QTY_MAX + '" step="1" inputmode="numeric" value="' + n + '" aria-label="How many"'
+    +   ' onchange="setQty(' + q + ',this.value)" onkeydown="if(event.key===&quot;Enter&quot;)this.blur()">'
+    + '<button onclick="setQty(' + q + ',' + (n + 1) + ')"' + (n >= QTY_MAX ? " disabled" : "") + ' aria-label="One more">+</button>'
+    + (n > 1 && e.v != null ? '<span>' + n + ' × ' + money(e.v) + ' = <b>' + money(e.v * n) + '</b></span>' : '')
+    + '</div></div>';
+}
+function redrawQty(id){
+  const el = document.getElementById("qtypane");
+  if(el) el.outerHTML = qtyBlock(id);
+}
+function setQty(id, n){
+  const e = OWNED[id]; if(!e) return;
+  if(needSignIn()) return;
+  n = Math.round(Number(n));
+  if(!Number.isFinite(n) || n < 1) n = 1;
+  if(n > QTY_MAX) n = QTY_MAX;
+  if(n === 1) delete e.qty; else e.qty = n;
+  saveCollection();
+  redrawQty(id);
+  refreshView();
+}
+
+/* --- your copy: which printing you own ---
+   A card's value in the collection starts as its cheapest printing. Picking the printing you
+   actually have — normal, holofoil, reverse holofoil, 1st edition… — sets pr on the OWNED entry
+   and uses that printing's price (from vs, saved with the card), so the collection's total is
+   right. Tap the chosen one again to un-pick it. Cards saved before vs existed get it filled in
+   from the API the next time their sheet opens (upgradeCard). */
+function applyCopy(e, key){
+  e.pr = key;
+  const p = e.vs && e.vs[key];
+  if(p != null){ e.v = p; e.est = false; }
+}
+function clearCopy(e){
+  delete e.pr;
+  const vals = Object.values(e.vs || {}).filter(x => x != null);
+  if(vals.length){ e.v = Math.min(...vals); e.est = false; }
+}
+function copyBlock(id){
+  const e = OWNED[id];
+  if(!e) return '<div id="copypane"></div>';
+  const card = CARDS.get(id);
+  if(!e.vs || !Object.keys(e.vs).length){
+    if(card && !card._snap) e.vs = printPrices(card);
+    else return '<div id="copypane" class="blk copy"><h4>Your copy</h4><div class="copyhint">Checking which printings this card came in…</div></div>';
+  }
+  const keys = sortPrintings(Object.keys(e.vs));
+  if(!keys.length) return '<div id="copypane"></div>';
+  if(keys.length === 1){
+    return '<div id="copypane" class="blk copy"><h4>Your copy</h4><div class="copyhint">This card was only printed one way: <b>'
+      + esc(varLabel(keys[0])) + '</b>' + (varNote(keys[0]) ? ' — ' + esc(varNote(keys[0])) : '') + '.</div></div>';
+  }
+  const q = "'" + id + "'";
+  return '<div id="copypane" class="blk copy"><h4>Your copy — which one do you have?</h4>'
+    + '<div class="vars">' + keys.map(k => '<button class="' + (e.pr === k ? "on" : "") + '" onclick="setCopy(' + q + ',\'' + k + '\')">'
+        + esc(varLabel(k)) + '<small>' + esc(varNote(k) ? varNote(k) + " · " : "") + (e.vs[k] != null ? money(e.vs[k]) : "no price") + '</small></button>').join("")
+    + '</div>'
+    + '<div class="copyhint">' + (e.pr
+        ? 'Counted in your collection at <b>' + (e.v != null ? money(e.v) : "—") + '</b>. Tap it again to un-pick.'
+        : 'Pick the one in your hand so it\'s valued right — until then it counts as the cheapest, <b>' + (e.v != null ? money(e.v) : "—") + '</b>.')
+    + (lacksHolo(keys) ? '<br>Shiny artwork? That\'s a different printing — tap <b>Holofoil</b> in the prices below to find it.' : '')
+    + '</div></div>';
+}
+function redrawCopy(id){
+  const el = document.getElementById("copypane");
+  if(el) el.outerHTML = copyBlock(id);
+}
+function setCopy(id, key){
+  const e = OWNED[id]; if(!e) return;
+  if(needSignIn()) return;
+  if(e.pr === key) clearCopy(e); else applyCopy(e, key);
+  saveCollection();
+  redrawCopy(id);
+  redrawQty(id);
+  if(modalCard && modalCard.id === id && e.pr && ((modalCard.tcgplayer || {}).prices || {})[e.pr]) selectVar(e.pr);
+  else if(modalCard && modalCard.id === id) selectVar(modalVar);        // redraw the price heading
+  refreshView();
+}
+/* A card opened from a saved snapshot (after a reload) has no price data; fetch the full card so
+   its printings and prices can be shown, and fill in the saved card's vs if it's missing. */
+async function upgradeCard(id){
+  let full;
+  try{
+    full = await cachedFetch("card:" + id, async () => (await getJSON(API + "/cards/" + encodeURIComponent(id))).data);
+  }catch(e){
+    const el = document.getElementById("copypane");
+    if(el && modalCard && modalCard.id === id) el.innerHTML = '<h4>Your copy</h4><div class="copyhint">Couldn\'t load this card\'s printings right now.</div>';
+    return;
+  }
+  if(!full) return;
+  const had = CARDS.get(id);
+  if(!had || had._snap) CARDS.set(id, full);
+  const e = OWNED[id];
+  if(e && (!e.vs || !Object.keys(e.vs).length)){ e.vs = printPrices(full); saveCollection(); }
+  if(modalCard && modalCard.id === id && modalCard._snap && document.getElementById("modal")){
+    const sheet = document.querySelector("#modal"), y = sheet ? sheet.scrollTop : 0;
+    openCard(id);                               // redraw the sheet with real prices
+    const again = document.querySelector("#modal"); if(again) again.scrollTop = y;
+  }
 }
 
 /* --- binder slots ---
@@ -742,6 +903,7 @@ function toggleMore(){
 
 /* Re-draw whatever is on screen after the collection changes. */
 function refreshView(){
+  if(document.getElementById("holoalts") && modalCard) loadHoloAlts(modalCard);   // holo list in the card sheet
   if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
   else if(VIEW === "energy") drawEnergy();
@@ -963,13 +1125,16 @@ function drawFound(){
     + (searchType ? " " + searchType + "-type" : "") + " card" + (searchTotal === 1 ? "" : "s");
   el.innerHTML = searchHits.map(findTile).join("");
 }
+let tileHolo = false;   // while true, tiles show the holofoil price (the card sheet's holo list)
 function findTile(c){
   const s = c.set || {};
-  const r = cardValue(c);
+  const h = tileHolo && ((c.tcgplayer || {}).prices || {}).holofoil;
+  const hv = h ? (h.market != null ? h.market : h.mid) : null;
+  const r = hv != null ? {v: hv, est: false, why: "TCGplayer holofoil market price"} : cardValue(c);
   const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
   return '<div class="find" onclick="openCard(\'' + c.id + '\')" style="position:relative">'
     + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
-    + (owns(c.id) ? '<div class="ownmark">✓</div>' : '')
+    + (owns(c.id) ? '<div class="ownmark">' + ownMark(c.id) + '</div>' : '')
     + '<div class="fnm">' + esc(c.name) + '</div>'
     + '<div class="fset">' + sym + '<span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
     + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
@@ -1237,7 +1402,7 @@ function cardTile(c, cls){
   return '<div class="card ' + (cls || "") + '" onclick="openCard(\'' + c.id + '\')" title="' + esc(c.name) + '">'
     + (img ? '<img src="' + img + '" alt="' + esc(c.name) + '" loading="lazy">' : '<div style="padding:10px">' + esc(c.name) + '</div>')
     + '<div class="no">#' + esc(String(c.number)) + '</div>'
-    + (owns(c.id) ? '<div class="ownmark">✓</div>' : '')
+    + (owns(c.id) ? '<div class="ownmark">' + ownMark(c.id) + '</div>' : '')
     + (r ? '<div class="pr' + (r.est ? " est" : "") + '" title="' + esc(r.est ? "Estimate — " + r.why : r.why) + '">'
            + (r.est ? "~" : "") + money(r.v) + '</div>' : '')
     + '</div>';
@@ -1271,9 +1436,12 @@ function ownedTile(s){
   const have = owns(s.id);
   return '<div class="find" onclick="openCard(\'' + s.id + '\')" style="position:relative">'
     + '<img class="art" src="' + s.img + '" alt="' + esc(s.n) + '" loading="lazy">'
-    + (have ? '<div class="ownmark">✓</div>' : '')
+    + (have ? '<div class="ownmark">' + ownMark(s.id) + '</div>' : '')
     + '<div class="fnm">' + esc(s.n) + '</div>'
     + '<div class="fset"><span>' + esc(s.set) + ' · #' + esc(s.num) + '</span></div>'
+    + (s.pr ? '<div class="fprint">' + esc(varLabel(s.pr)) + '</div>'
+        : s.vs && Object.keys(s.vs).length > 1 ? '<div class="fprint unset">Printing not picked yet</div>' : '')
+    + (qtyOf(s) > 1 ? '<div class="fqty">' + qtyOf(s) + ' copies' + (s.v != null ? ' · ' + money(s.v * qtyOf(s)) : '') + '</div>' : '')
     + (slotNumber(s.slot) ? '<div class="fslot">Binder slot ' + slotNumber(s.slot) + '</div>' : '')
     + '<div class="frow"><span class="rr">' + esc(s.rar || "—") + '</span>'
     +   '<span class="pp' + (s.est ? " est" : "") + '">' + (s.v != null ? (s.est ? "~" : "") + money(s.v) : "—") + '</span></div>'
@@ -1297,6 +1465,13 @@ function showOwned(){
 }
 // separate from showOwned so un-ticking a card from its sheet doesn't close the sheet
 function renderOwned(){
+  // cards saved before printings were remembered: fill in from full card data already loaded
+  let filled = false;
+  for(const k in OWNED){
+    const e = OWNED[k], c = CARDS.get(k);
+    if(!e.vs && c && !c._snap){ e.vs = printPrices(c); filled = true; }
+  }
+  if(filled && USER) saveCollection();
   const list = Object.values(OWNED);
   const head = '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>My collection</h1>'
     + '<div class="tagline">An online way to keep track of your Pokémon</div>';
@@ -1320,10 +1495,12 @@ function renderOwned(){
     return;
   }
   for(const s of list) if(!CARDS.has(s.id)) CARDS.set(s.id, snapToCard(s));
-  const val = list.reduce((t,s) => t + (s.v || 0), 0);
+  const val = list.reduce((t,s) => t + (s.v || 0) * qtyOf(s), 0);
+  const copies = list.reduce((t,s) => t + qtyOf(s), 0);
   app.innerHTML = head
     +   '<div class="stats">'
     +     '<div>Cards in your collection<b>' + list.length + '</b></div>'
+    +     (copies > list.length ? '<div>Copies, counting doubles<b>' + copies + '</b></div>' : '')
     +     '<div>What they\'re worth<b style="color:#7ee38a">' + money(val) + '</b></div>'
     +   '</div></div></div>'
     + '<div class="tools">'
@@ -1350,8 +1527,8 @@ function sortOwned(list){
   const by = {
     new: newest,
     old: (a, b) => pos[a.id] - pos[b.id],
-    hi: (a, b) => noPrice(a, b) || b.v - a.v || newest(a, b),
-    lo: (a, b) => noPrice(a, b) || a.v - b.v || newest(a, b),
+    hi: (a, b) => noPrice(a, b) || b.v * qtyOf(b) - a.v * qtyOf(a) || newest(a, b),
+    lo: (a, b) => noPrice(a, b) || a.v * qtyOf(a) - b.v * qtyOf(b) || newest(a, b),
     az: (a, b) => (a.n || "").localeCompare(b.n || "") || (a.set || "").localeCompare(b.set || ""),
     set: (a, b) => (a.set || "").localeCompare(b.set || "") || num(a.num) - num(b.num) || String(a.num).localeCompare(String(b.num)),
     binder: (a, b) => (!slotNumber(a.slot)) - (!slotNumber(b.slot)) || (slotNumber(a.slot) || 0) - (slotNumber(b.slot) || 0) || newest(a, b)
@@ -1365,7 +1542,8 @@ function drawOwned(){
   const num = term.replace(/^#/, "");
   const hits = list.filter(s => !term
     || (s.n || "").toLowerCase().includes(term) || (s.set || "").toLowerCase().includes(term)
-    || (s.rar || "").toLowerCase().includes(term) || String(s.num).toLowerCase() === num);
+    || (s.rar || "").toLowerCase().includes(term) || String(s.num).toLowerCase() === num
+    || (s.pr && varLabel(s.pr).toLowerCase().includes(term)));
   document.getElementById("oshown").textContent = term ? hits.length + " / " + list.length + " cards" : "";
   document.getElementById("ogrid").innerHTML = sortOwned(hits).map(ownedTile).join("")
     || '<div class="msg" style="grid-column:1/-1">Nothing in your collection matches “' + esc(ownedTerm.trim()) + '”.</div>';
@@ -1632,6 +1810,8 @@ function redrawSheet(){
   if(!modalCard || !document.getElementById("modal")) return;
   const b = document.getElementById("ownbtn");
   if(b) b.outerHTML = ownBtn(modalCard.id);
+  redrawQty(modalCard.id);
+  redrawCopy(modalCard.id);
   redrawBinder(modalCard.id);
 }
 function toast(msg){
@@ -1644,7 +1824,7 @@ function toast(msg){
 }
 
 /* ---------------- card modal ---------------- */
-let modalCard = null, modalVar = "";
+let modalCard = null, modalVar = "", modalPicked = false;   // picked: the printing was chosen by hand
 
 // what each TCGplayer printing actually looks like, so you can tell which one is in your hand
 const VARIANTS = {
@@ -1665,6 +1845,7 @@ function varNote(k){ return VARIANTS[k] ? VARIANTS[k][1] : ""; }
 
 function selectVar(k){
   modalVar = k;
+  modalPicked = k !== HOLO_MISSING;
   const pane = document.getElementById("pricepane");
   if(pane) pane.innerHTML = priceBlock(modalCard);
 }
@@ -1677,6 +1858,10 @@ function openCard(id){
   const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
   const withPrice = Object.keys(tp).filter(k => tp[k] && tp[k].market != null);
   modalVar = withPrice[0] || Object.keys(tp)[0] || "";
+  modalPicked = false;
+  const mine = OWNED[id];
+  if(mine && mine.pr && tp[mine.pr]) modalVar = mine.pr;     // show the price of the copy you own
+  if(c._snap) setTimeout(() => upgradeCard(id), 0);
   const typeChips = (c.types || []).map(t => '<span class="chip t" style="background:' + (TYPE_COLORS[t] || "#ccc") + '">' + esc(t) + '</span>').join("");
   const subChips  = (c.subtypes || []).map(s => '<span class="chip">' + esc(s) + '</span>').join("");
 
@@ -1725,6 +1910,8 @@ function openCard(id){
     + '<div class="info"><h2>' + esc(c.name) + (c.hp ? ' <span style="color:var(--dim);font-size:16px">HP ' + esc(c.hp) + '</span>' : '') + '</h2>'
     + '<div class="sub">' + esc(c.supertype || "") + ' &nbsp;•&nbsp; check these against the card in your hand</div>'
     + idBlock
+    + qtyBlock(c.id)
+    + copyBlock(c.id)
     + binderBlock(c.id)
     + '<div id="pricepane">' + priceBlock(c) + '</div>'
     + '<div class="chips">' + typeChips + subChips + '</div>'
@@ -1732,24 +1919,51 @@ function openCard(id){
 }
 
 /* Price for the printing currently selected, plus the picker to change it. */
+/* Commons, uncommons and plain rares are only printed normal and reverse holo in their set, so
+   TCGplayer has no holofoil price for them — but holo versions of the same card often exist
+   elsewhere (promos, McDonald's, blister "cosmos holo", illustration rares). For those cards the
+   picker adds a dashed "Holofoil" choice that explains this and lists the holo printings of that
+   exact name, with their prices. */
+const HOLO_MISSING = "holofoilMissing";
+function lacksHolo(kinds){
+  return kinds.length > 0 && kinds.some(k => k === "normal" || k === "reverseHolofoil")
+    && !kinds.some(k => /holofoil/i.test(k) && k !== "reverseHolofoil");
+}
 function priceBlock(c){
   const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
   const kinds = Object.keys(tp);
   let out = "";
+  const noHolo = lacksHolo(kinds);
+  // normal, then holofoil, then reverse — the order the choices go from plain to shiny
+  const order = ["normal", "holofoil", HOLO_MISSING, "reverseHolofoil"];
+  const choices = kinds.concat(noHolo ? [HOLO_MISSING] : [])
+    .sort((a, b) => (order.indexOf(a) < 0 ? 9 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 9 : order.indexOf(b)));
 
-  if(kinds.length > 1){
-    out += '<div class="blk" style="border-top:0;padding-top:0"><h4>Which printing do you have?</h4>'
-      + '<div class="vars">' + kinds.map(k =>
-          '<button class="' + (k === modalVar ? "on" : "") + '" onclick="selectVar(\'' + k + '\')">'
-          + esc(varLabel(k))
-          + '<small>' + esc(varNote(k) || (tp[k] && tp[k].market != null ? money(tp[k].market) : "no price")) + '</small>'
-          + '</button>').join("")
+  if(choices.length > 1){
+    out += '<div class="blk" style="border-top:0;padding-top:0"><h4>' + (OWNED[c.id] ? "Prices by printing" : "Which printing do you have?") + '</h4>'
+      + '<div class="vars">' + choices.map(k => k === HOLO_MISSING
+          ? '<button class="missing' + (k === modalVar ? " on" : "") + '" onclick="selectVar(\'' + k + '\')">Holofoil'
+            + '<small>the artwork itself is shiny — not in this set</small></button>'
+          : '<button class="' + (k === modalVar ? "on" : "") + '" onclick="selectVar(\'' + k + '\')">'
+            + esc(varLabel(k))
+            + '<small>' + esc(varNote(k) || (tp[k] && tp[k].market != null ? money(tp[k].market) : "no price")) + '</small>'
+            + '</button>').join("")
       + '</div></div>';
+  }
+
+  if(modalVar === HOLO_MISSING){
+    out += '<div class="warn"><b>No holofoil version of this card in ' + esc((c.set && c.set.name) || "this set") + '</b>'
+      + 'In its set, ' + esc(c.name) + ' was only printed plain and reverse holo (shiny everywhere except the artwork), so TCGplayer has no holofoil price for it. '
+      + 'If the artwork on yours is shiny, it\'s a different printing — a promo, a special collection, or an illustration rare. Holo versions of ' + esc(c.name) + ' are below; tap the one that matches yours.</div>'
+      + '<div class="holoalts" id="holoalts"><div class="msg" style="padding:14px 0"><div class="spinner" style="width:22px;height:22px;margin-bottom:6px"></div>Looking for holo versions of ' + esc(c.name) + '…</div></div>';
+    setTimeout(() => loadHoloAlts(c), 0);
   }
 
   const v = tp[modalVar];
   const mk = v ? (v.market != null ? v.market : (v.mid != null ? v.mid : v.low)) : null;
-  if(v && mk != null){
+  if(modalVar === HOLO_MISSING){
+    // the explanation and the list above say it all
+  }else if(v && mk != null){
     out += '<div class="bigprice"><b>' + money(mk) + '</b>'
         +  '<span>' + esc(kinds.length > 1 ? varLabel(modalVar).toLowerCase() : "market price")
         +  ' &middot; TCGplayer</span></div>';
@@ -1784,6 +1998,37 @@ function priceBlock(c){
       + '</div></div>';
   }
   return out;
+}
+async function loadHoloAlts(c){
+  const box = () => document.getElementById("holoalts");
+  const name = c.name;
+  let cards;
+  try{
+    const q = 'name:"' + name.replace(/["\\]/g, " ") + '"';
+    cards = (await cachedFetch("holo:" + name.toLowerCase(), () => getJSON(API + "/cards?q=" + encodeURIComponent(q)
+      + "&orderBy=-set.releaseDate&pageSize=250"), fresh => {
+        if(modalCard === c && modalVar === HOLO_MISSING) showHoloAlts(c, fresh.data);
+      })).data;
+  }catch(e){
+    if(box() && modalCard === c) box().innerHTML = '<div class="msg" style="padding:14px 0">' + esc(e.message)
+      + '<br><br><button class="back" onclick="loadHoloAlts(modalCard)">Try again</button></div>';
+    return;
+  }
+  if(modalCard === c && modalVar === HOLO_MISSING) showHoloAlts(c, cards);
+}
+function showHoloAlts(c, cards){
+  const el = document.getElementById("holoalts"); if(!el) return;
+  const price = x => { const h = ((x.tcgplayer || {}).prices || {}).holofoil; return h ? (h.market != null ? h.market : h.mid) : null; };
+  // the same name exactly ("Pikachu", not "Pikachu ex"), with a holofoil price, cheapest first
+  const holo = cards.filter(x => x.name === c.name && x.id !== c.id && price(x) != null)
+    .sort((a, b) => price(a) - price(b)).slice(0, 12);
+  remember(holo);
+  tileHolo = true;
+  const tiles = holo.map(x => findTile(x)).join("");
+  tileHolo = false;
+  el.innerHTML = holo.length
+    ? '<div class="found">' + tiles + '</div>'
+    : '<div class="msg" style="padding:14px 0">TCGplayer doesn\'t list any holofoil ' + esc(c.name) + '. If the artwork on yours is shiny, it may be a "cosmos holo" from a blister pack or a theme deck, which TCGplayer sells separately and this price data doesn\'t include.</div>';
 }
 function energy(cost){
   if(!cost || !cost.length) return "";

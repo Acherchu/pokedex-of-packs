@@ -310,6 +310,36 @@ collection is merged — the position is kept, never dropped. The old `binder` f
 stored profiles untouched (harmless; `saveCollection` merges with `Object.assign`). Tested: page 2
 pocket 3 on 12-pocket pages → slot 15, and slot 1 stayed 1, after reload.
 
+**How many (quantity).** The user asked to "select if you have multiple of a Pokémon". The card
+sheet's **"How many do you have?"** block (`qtyBlock`, `#qtypane`, above Your copy) is − / number /
++ ; `setQty` stores `OWNED[id].qty` (clamped 1–999, whole numbers; **missing = 1**, so every older
+save is one copy, and qty is deleted at 1). − stops at 1 — removing the card stays the "In your
+collection" button, so a slip can't delete it. All copies share the card's picked printing. Worth =
+`v × qty` everywhere: the collection total, the tile's "3 copies · $1.05" line, the price sorts, and
+"n × $0.35 = $1.05" in the sheet. The stats add "Copies, counting doubles" when any card has more
+than one. The green owned badge on every tile (`ownMark`) shows "×3" instead of ✓. Tested with real
+clicks and typing, invalid values (0, 5000, 3.6), and a reload.
+
+**Your copy (which printing).** The user asked to "select in the collection if your card is a holo
+or not so it's more accurate". A collected card's value starts as its **cheapest** printing
+(`cardPrice`). The card sheet's **"Your copy — which one do you have?"** block (`copyBlock`,
+`#copypane`, above the binder slot) lists the card's printings in `PRINT_ORDER` (normal → holofoil →
+reverse → 1st edition…) with their prices; tapping one sets `OWNED[id].pr` and `v = vs[pr]`
+(`applyCopy`), tapping it again un-picks back to the cheapest (`clearCopy`). One printing only →
+it just says so. Tiles show the picked printing ("Reverse holofoil"), or "Printing not picked
+yet" when there's a choice; collection search matches the printing name too. If you pick a printing
+in the price list first and then tap "I have this card", that printing is saved (`modalPicked`,
+set only by a real `selectVar` click — adding from a tile never guesses). For owned cards the price
+list's heading becomes "Prices by printing" so there aren't two "which do you have" questions.
+
+`snapOf` now also stores `vs` — every printing's price (`printPrices`: market, else mid, else low).
+**Old saved cards have no `vs`**: `renderOwned` fills it from full card data already loaded, and a
+sheet opened from a bare snapshot (after a reload) fetches the card (`upgradeCard`,
+`cachedFetch("card:<id>")`), fills `vs`, and redraws the sheet with real prices. `pr` and `vs` are
+additive fields on the snapshot — nothing old is renamed. Tested: an old-style Nidoking with no `vs`
+got its printings after reload; picking Reverse holofoil took it $0.27 → $1.76 and the total $0.54 →
+$2.03; un-picking went back to $0.27.
+
 Every stored entry keeps a **snapshot** of the card (`snapOf`): name, set, number, rarity, both
 image URLs, and its value at save time. That's the point — the collection renders completely
 without re-fetching every card, and still works when the API is down. `snapToCard` turns one back
@@ -338,6 +368,19 @@ shows a picker, and `VARIANTS` gives each one a plain-English tell ("shiny every
 artwork", "1st Edition stamp beside the art") so you can match it against the card in your hand.
 Keep those descriptions — they're the difference between a price list and something you can
 actually use.
+
+**Missing holofoil.** Commons, uncommons and plain rares are only printed normal and reverse holo
+in their own set, so TCGplayer has no `holofoil` price for them (all 128 Common/Uncommon cards in
+151, for example). The user saw only "Normal" and "Reverse holofoil" and reported holo as missing.
+`lacksHolo(kinds)` detects that case (has normal or reverseHolofoil, no other *holofoil key) and
+the picker adds a dashed **Holofoil — "not in this set"** choice (`HOLO_MISSING`), ordered Normal →
+Holofoil → Reverse. Choosing it explains why and `loadHoloAlts` lists the holo printings of the
+**exact same name** from anywhere (`name:"<name>"` via `cachedFetch("holo:<name>")`, filtered to
+`name ===` and a holofoil price, cheapest first, up to 12) — for 151 Bulbasaur: Detective Pikachu
+$1.16, SV promo $2.29, McDonald's 2021 $8.04 … Stellar Crown IR $99.37. Those tiles show the
+**holofoil** price (`tileHolo` flag in `findTile`), not the card's general price, and tapping one
+opens that printing. If none exist it says so and mentions blister "cosmos holo" cards, which this
+price data doesn't cover.
 
 ## Conventions
 
