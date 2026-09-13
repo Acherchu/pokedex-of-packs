@@ -15,7 +15,8 @@ and current sealed booster-pack price. Sort by newest, oldest, priciest pack, A�
 Open a set for its full card list with rarity and type filters, and a booster-pack simulator that
 deals you a realistic 9-card pull.
 
-**Card search** — search every card ever printed by name. Each *printing* comes back separately
+**Card search** — search every card ever printed by name, pick an energy type (Fire, Water,
+Psychic…), or both. Each *printing* comes back separately
 with its set, card number, rarity and price, because the same Charizard exists in dozens of sets
 at wildly different values.
 
@@ -37,10 +38,6 @@ Everything you add collects in one place with its total value, and you can searc
 newest, price high to low or low to high, name, set, or binder order. Click a
 card in your collection and tap **+** to give it a binder slot number, so you know where it is in
 your real binder.
-
-**Scan a card** — point your camera at a card (or pick a photo of it) and the site reads its name
-and number, finds that exact card, and lets you add it with one tap. You can fix what it read if it
-gets it wrong.
 
 You have to **sign in** to make a collection so it can be saved — pick a name and a password.
 Your collection saves on that device under your name. Browsing sets, prices and card search never

@@ -234,7 +234,7 @@
   .modal{position:fixed;inset:0;z-index:100;background:rgba(4,12,32,.82);backdrop-filter:blur(6px);
     display:flex;padding:24px;overflow:auto}
   /* centred with margin:auto, not align-items:center — that clips the top of a sheet taller than
-     the screen (the card sheet, the scanner) where it can't be scrolled back to */
+     the screen (like the card sheet) where it can't be scrolled back to */
   .modal > .sheet{margin:auto}
   .sheet{
     background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
@@ -269,47 +269,15 @@
   @keyframes pop{from{opacity:0;transform:translateY(24px) scale(.9) rotate(-3deg)}to{opacity:1;transform:none}}
   footer{color:var(--dim);font-size:12px;text-align:center;padding:40px 0 10px}
 
-  /* ---------- card scanner ---------- */
-  .scan{max-width:560px;flex-direction:column;flex-wrap:nowrap;gap:12px;padding:22px 20px 20px}   /* wrap stretches the result rows */
-  .scan h2{margin:0;font-size:22px}
-  .scan .scansub{color:var(--dim);font-size:13px;margin-top:-6px}
-  .scanstage{
-    position:relative;width:100%;aspect-ratio:3/4;max-height:60vh;background:#000;border-radius:12px;overflow:hidden;
-    margin:0 auto;
+  /* ---------- card search: energy types ---------- */
+  .etypes{display:flex;gap:7px;flex-wrap:wrap;margin:22px 0 4px}
+  .etypes button{
+    display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    font:inherit;font-size:13.5px;font-weight:600;padding:7px 14px;border-radius:999px;cursor:pointer;
   }
-  /* contain, not cover: the whole camera view shows, nothing cropped off the sides */
-  .scanstage video{width:100%;height:100%;object-fit:contain;display:block}
-  .scanframe{
-    position:absolute;left:50%;top:50%;height:var(--fh,70%);aspect-ratio:63/88;transform:translate(-50%,-50%);
-    border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 0 999px rgba(4,12,32,.45);pointer-events:none;
-    transition:border-color .15s;
-  }
-  .scanframe.ready{border-color:#7ee38a}
-  .scanframe span{
-    position:absolute;left:50%;top:-28px;transform:translateX(-50%);white-space:nowrap;font-size:12.5px;font-weight:700;
-    color:var(--gold);text-shadow:0 1px 3px #000;
-  }
-  .scanframe.ready span{color:#7ee38a}
-  .scanframe i{position:absolute;left:0;bottom:0;height:6px;width:0;background:#7ee38a;border-radius:0 3px 0 10px;transition:width .2s linear}
-  .scanbtns .autotog{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim);cursor:pointer;user-select:none}
-  .scanbtns .autotog input{accent-color:var(--gold);width:16px;height:16px}
-  .scanstage .camerr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
-    padding:24px;color:var(--dim);font-size:14px;line-height:1.5}
-  .scanbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  .scanbtns .btn-gold{font-size:15px;padding:11px 20px}
-  .scanbtns label.back{display:inline-block}
-  .scanstatus{font-size:13.5px;color:var(--dim)}
-  .scanstatus b{color:var(--gold)}
-  .scanread{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--dim)}
-  .scanread[hidden]{display:none}
-  .scanread input{
-    background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:7px 10px;
-    font:inherit;font-size:14px;outline:none;min-width:0;
-  }
-  .scanread input:focus{border-color:var(--gold)}
-  .scanread #scanname{flex:1 1 150px}
-  .scanread #scannum{width:110px}
-  .scan .found{margin-top:0;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+  .etypes button:hover{border-color:var(--dim)}
+  .etypes button i{width:14px;height:14px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.45)}
+  .etypes button.on{border-color:currentColor;background:rgba(255,255,255,.08)}
 
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
@@ -405,7 +373,6 @@ let SETS = [];
 let VIEW = "sets";           // "sets" | "set" | "search"
 let current = null;          // current set object
 let currentCards = [];       // cards of the current set
-const cardCache = new Map(); // setId -> cards[]
 const CARDS = new Map();     // every card seen this session, id -> card (what openCard reads)
 
 function remember(cards){ for(const c of cards) CARDS.set(c.id, c); }
@@ -432,18 +399,115 @@ async function getJSON(url, tries){
   }
   throw new Error("The Pokémon TCG API isn't answering right now (" + last + ").");
 }
+/* ---------------- saved copies of card data ----------------
+   Sets, set card lists and search results are kept on the device so they show instantly — but
+   every time one is used, the API is asked again in the background. If the answer changed (new
+   prices, a new set), the saved copy is replaced and whatever is on screen redraws in place.
+   Only a failed or unchanged answer leaves things as they are.
+
+   Storage is IndexedDB ("pokedex-cache"), NOT localStorage: a set's cards are hundreds of KB, and
+   localStorage holds the accounts, which must never be squeezed out. Up to CACHE_MAX entries are
+   kept, least recently used dropped first. If IndexedDB is unavailable (some private windows),
+   everything just loads from the network like before.
+
+   "Every time" has one allowance: the same thing isn't re-checked within CACHE_RECHECK_MS in one
+   visit (flicking back and forth between two sets), because the free API allows ~1000 calls a day. */
+const CACHE_MAX = 250, CACHE_RECHECK_MS = 60000, CACHE_RETRY = [4000, 15000, 45000];
+const cacheMem = new Map();      // key -> {s: JSON string, d: parsed}, this visit
+const cacheChecked = new Map();  // key -> when it was last checked against the API, this visit
+const cacheFlight = new Map();   // key -> the API request already under way
+let cacheDbP = null;
+function cacheDb(){
+  if(!cacheDbP){
+    cacheDbP = new Promise((res, rej) => {
+      if(!window.indexedDB) return rej(new Error("no IndexedDB"));
+      const r = indexedDB.open("pokedex-cache", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("c", {keyPath: "k"}).createIndex("t", "t");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => rej(r.error);
+      r.onblocked = () => rej(new Error("IndexedDB blocked"));
+    });
+    cacheDbP.catch(() => {});
+  }
+  return cacheDbP;
+}
+async function cacheRead(key){
+  try{
+    const db = await cacheDb();
+    return await new Promise(res => {
+      const q = db.transaction("c").objectStore("c").get(key);
+      q.onsuccess = () => res(q.result || null);
+      q.onerror = () => res(null);
+    });
+  }catch(e){ return null; }
+}
+async function cacheWrite(key, str){
+  try{
+    const db = await cacheDb();
+    const tx = db.transaction("c", "readwrite"), st = tx.objectStore("c");
+    st.put({k: key, t: Date.now(), s: str});
+    const n = st.count();
+    n.onsuccess = () => {                         // over the limit: drop the least recently used
+      let extra = n.result - CACHE_MAX;
+      if(extra <= 0) return;
+      const cur = st.index("t").openCursor();
+      cur.onsuccess = () => { const c = cur.result; if(c && extra-- > 0){ c.delete(); c.continue(); } };
+    };
+  }catch(e){ /* no saved copy this time — the data on screen is still right */ }
+}
+
+/* Returns the saved copy right away if there is one (and checks the API behind it, calling
+   onUpdate(freshData) if the answer changed); with no saved copy, waits for the API. */
+async function cachedFetch(key, fetcher, onUpdate){
+  let hit = cacheMem.get(key);
+  if(!hit){
+    const row = await cacheRead(key);
+    if(row){ try{ hit = {s: row.s, d: JSON.parse(row.s)}; cacheMem.set(key, hit); }catch(e){ hit = null; } }
+  }
+  const check = () => {
+    if(cacheFlight.has(key)) return cacheFlight.get(key);
+    const job = (async () => {
+      const fresh = await fetcher();
+      const str = JSON.stringify(fresh);
+      const before = cacheMem.get(key);
+      const changed = !before || before.s !== str;
+      cacheMem.set(key, {s: str, d: fresh});
+      cacheChecked.set(key, Date.now());
+      cacheWrite(key, str);                       // also refreshes its "last used" time
+      return {data: fresh, changed: changed};
+    })();
+    cacheFlight.set(key, job);
+    job.then(() => cacheFlight.delete(key), () => cacheFlight.delete(key));
+    return job;
+  };
+  if(!hit) return (await check()).data;
+  if(Date.now() - (cacheChecked.get(key) || 0) >= CACHE_RECHECK_MS){
+    // the free API often fails a request outright; a failed check tries again rather than
+    // leaving an out-of-date copy on screen
+    const background = attempt => check()
+      .then(r => { if(r.changed && onUpdate) onUpdate(r.data); })
+      .catch(() => { if(attempt < CACHE_RETRY.length) setTimeout(() => background(attempt + 1), CACHE_RETRY[attempt]); });
+    background(0);
+  }
+  return hit.d;
+}
+
 async function loadSets(){
+  // the old 24-hour copy in localStorage: use it once as the starting copy, then free that space
   try{
-    const cached = localStorage.getItem("pkSets");
-    if(cached){
-      const o = JSON.parse(cached);
-      if(Date.now() - o.t < 864e5){ SETS = o.d; renderSets(); return; }
+    const old = localStorage.getItem("pkSets");
+    if(old){
+      const o = JSON.parse(old);
+      localStorage.removeItem("pkSets");
+      if(o && o.d && !(await cacheRead("sets"))) await cacheWrite("sets", JSON.stringify(o.d));
     }
-  }catch(e){}
+  }catch(e){ try{ localStorage.removeItem("pkSets"); }catch(e2){} }
   try{
-    const d = await getJSON(API + "/sets?pageSize=250");
-    SETS = d.data;
-    try{ localStorage.setItem("pkSets", JSON.stringify({t:Date.now(), d:SETS})); }catch(e){}
+    SETS = await cachedFetch("sets", async () => (await getJSON(API + "/sets?pageSize=250")).data, fresh => {
+      SETS = fresh;
+      if(current) current = SETS.find(x => x.id === current.id) || current;
+      if(VIEW === "sets") keepScroll(renderSets);
+    });
     renderSets();
   }catch(e){
     app.innerHTML = '<div class="msg">' + esc(e.message)
@@ -451,8 +515,14 @@ async function loadSets(){
       + '<br><br><button class="btn-gold" onclick="loadSets()">Try again</button></div>';
   }
 }
-async function loadCards(setId){
-  if(cardCache.has(setId)) return cardCache.get(setId);
+function sortByNumber(all){
+  return all.slice().sort((a,b)=>{
+    const na = parseInt(a.number,10), nb = parseInt(b.number,10);
+    if(isNaN(na) || isNaN(nb)) return String(a.number).localeCompare(String(b.number));
+    return na - nb || String(a.number).localeCompare(String(b.number));
+  });
+}
+async function fetchSetCards(setId){
   let all = [], page = 1;
   while(true){
     const d = await getJSON(API + "/cards?q=set.id:" + encodeURIComponent(setId) + "&pageSize=250&page=" + page);
@@ -460,14 +530,32 @@ async function loadCards(setId){
     if(d.data.length < 250) break;
     page++;
   }
-  all.sort((a,b)=>{
-    const na = parseInt(a.number,10), nb = parseInt(b.number,10);
-    if(isNaN(na) || isNaN(nb)) return String(a.number).localeCompare(String(b.number));
-    return na - nb || String(a.number).localeCompare(String(b.number));
+  return sortByNumber(all);
+}
+async function loadCards(setId){
+  const all = await cachedFetch("set:" + setId, () => fetchSetCards(setId), fresh => {
+    remember(fresh);
+    if(VIEW === "set" && current && current.id === setId) refreshSetBody(fresh);
   });
-  cardCache.set(setId, all);
   remember(all);
   return all;
+}
+/* Redraw without jumping: keep the scroll position (and, for a set, what's typed in its filters). */
+function keepScroll(fn){
+  const y = window.scrollY;
+  fn();
+  window.scrollTo({top: y});
+}
+function refreshSetBody(fresh){
+  const shown = document.getElementById("shown");
+  currentCards = fresh;
+  if(shown && /^your pull/.test(shown.textContent)) return;   // don't wipe a booster pack mid-reveal
+  const vals = ["cq","cr","ct"].map(id => { const el = document.getElementById(id); return el ? el.value : ""; });
+  keepScroll(() => {
+    renderSetBody();
+    ["cq","cr","ct"].forEach((id, i) => { const el = document.getElementById(id); if(el && vals[i]) el.value = vals[i]; });
+    drawCards();
+  });
 }
 
 /* ---------------- saved stuff ----------------
@@ -610,6 +698,11 @@ function snapToCard(s){
    at wildly different values. */
 const PAGE = 60;
 let searchTerm = "", searchPage = 1, searchTotal = 0, searchHits = [], searchBusy = false, searchSeq = 0;
+/* Card search narrows by energy type rather than by set: pick Fire and only Fire Pokémon come back.
+   The type goes into the API query itself, so counts and "Load more" stay right, and a type on its
+   own (no name typed) browses every card of that type, newest first. */
+const ENERGY = ["Grass","Fire","Water","Lightning","Psychic","Fighting","Darkness","Metal","Fairy","Dragon","Colorless"];
+let searchType = "";
 
 function showSearch(){
   closeCard();
@@ -641,7 +734,6 @@ function toggleMore(){
 
 /* Re-draw whatever is on screen after the collection changes. */
 function refreshView(){
-  if(document.getElementById("scanhits")) drawScanHits();   // the scanner shows add buttons too
   if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
   else if(VIEW === "set") drawCards();
@@ -654,20 +746,26 @@ function onSearchTyping(){
   const t = qIn.value.trim();
   typeTimer = setTimeout(() => runSearch(t), 350);
 }
+function searchReady(term){ return term.length >= 2 || !!searchType; }
+function pickEnergy(t){
+  searchType = searchType === t ? "" : t;       // tap the chosen type again to clear it
+  runSearch(qIn.value.trim());
+}
 async function runSearch(term){
   searchTerm = term;
-  if(term.length < 2){ searchHits = []; searchTotal = 0; renderSearch(); return; }
+  if(!searchReady(term)){ searchHits = []; searchTotal = 0; renderSearch(); return; }
   const seq = ++searchSeq;
   searchPage = 1; searchBusy = true;
-  app.innerHTML = '<div class="msg"><div class="spinner"></div>Looking for “' + esc(term) + '”…</div>';
+  const what = [searchType ? searchType + " type" : "", term ? "“" + term + "”" : ""].filter(Boolean).join(" · ");
+  app.innerHTML = energyBar() + '<div class="msg"><div class="spinner"></div>Looking for ' + esc(what) + '…</div>';
   try{
-    const d = await fetchPage(term, 1);
+    const d = await fetchPage(term, 1, seq);
     if(seq !== searchSeq) return;            // a newer search already started
     searchHits = d.data; searchTotal = d.totalCount;
     remember(d.data);
   }catch(e){
     if(seq !== searchSeq) return;
-    app.innerHTML = '<div class="msg">' + esc(e.message)
+    app.innerHTML = energyBar() + '<div class="msg">' + esc(e.message)
       + '<br><br><button class="btn-gold" onclick="runSearch(' + JSON.stringify(term).replace(/"/g, "&quot;") + ')">Try again</button></div>';
     searchBusy = false;
     return;
@@ -675,11 +773,24 @@ async function runSearch(term){
   searchBusy = false;
   renderSearch();
 }
-function fetchPage(term, page){
+function fetchPage(term, page, seq){
   // quoted wildcards, so "mr. mime" and partial words both work
-  const q = 'name:"*' + term.replace(/["\\]/g, " ") + '*"';
-  return getJSON(API + "/cards?q=" + encodeURIComponent(q)
-    + "&orderBy=-set.releaseDate,number&pageSize=" + PAGE + "&page=" + page);
+  const parts = [];
+  if(term.length >= 2) parts.push('name:"*' + term.replace(/["\\]/g, " ") + '*"');
+  if(searchType) parts.push("types:" + searchType);
+  const q = parts.join(" ");
+  const url = API + "/cards?q=" + encodeURIComponent(q) + "&orderBy=-set.releaseDate,number&pageSize=" + PAGE + "&page=" + page;
+  const key = "search:" + (searchType || "") + "|" + term.toLowerCase() + "|" + page;
+  return cachedFetch(key, () => getJSON(url), fresh => {
+    // only if that exact search is still the one on screen
+    if(seq !== searchSeq || VIEW !== "search") return;
+    remember(fresh.data);
+    const start = (page - 1) * PAGE;
+    if(start > searchHits.length) return;
+    searchHits = searchHits.slice(0, start).concat(fresh.data, searchHits.slice(start + PAGE));
+    searchTotal = fresh.totalCount;
+    keepScroll(renderSearch);
+  });
 }
 async function moreResults(){
   if(searchBusy) return;
@@ -687,7 +798,7 @@ async function moreResults(){
   const btn = document.getElementById("more");
   if(btn){ btn.textContent = "Loading…"; btn.disabled = true; }
   try{
-    const d = await fetchPage(searchTerm, searchPage + 1);
+    const d = await fetchPage(searchTerm, searchPage + 1, searchSeq);
     searchPage++;
     searchHits = searchHits.concat(d.data);
     remember(d.data);
@@ -700,10 +811,10 @@ async function moreResults(){
 function renderSearch(){
   VIEW = "search";
   setTab();
-  if(!searchTerm || searchTerm.length < 2){
+  if(!searchReady(searchTerm)){
     countEl.textContent = "";
-    app.innerHTML = '<div class="hint"><h3>Find any card ever printed</h3>'
-      + 'Type a name above. Every printing comes back separately — set, card number and rarity —<br>'
+    app.innerHTML = energyBar() + '<div class="hint" style="padding-top:40px"><h3>Find any card ever printed</h3>'
+      + 'Type a name above, pick an energy type, or both. Every printing comes back separately — set, card number and rarity —<br>'
       + 'so you can pick the exact one you own and see what it is worth.'
       + '<div class="egs">'
       + ['Charizard','Pikachu','Umbreon','Mew','Rayquaza','Mr. Mime'].map(n =>
@@ -713,15 +824,14 @@ function renderSearch(){
   }
   countEl.textContent = searchTotal.toLocaleString("en-US") + " printing" + (searchTotal === 1 ? "" : "s");
   if(!searchHits.length){
-    app.innerHTML = '<div class="hint"><h3>No card called “' + esc(searchTerm) + '”</h3>Check the spelling, or try part of the name.</div>';
+    app.innerHTML = energyBar() + '<div class="hint" style="padding-top:40px"><h3>No '
+      + (searchType ? esc(searchType) + '-type ' : '') + 'card' + (searchTerm.length >= 2 ? ' called “' + esc(searchTerm) + '”' : 's') + '</h3>'
+      + (searchType && searchTerm ? 'Try another energy type, or All types.' : 'Check the spelling, or try part of the name.') + '</div>';
     return;
   }
-  const sets = [...new Set(searchHits.map(c => c.set && c.set.name).filter(Boolean))].sort();
   app.innerHTML =
-      '<div class="tools">'
-    +   '<select id="fset"><option value="">All sets</option>'
-    +     sets.map(s => '<option' + (s === lastSetFilter ? ' selected' : '') + '>' + esc(s) + '</option>').join("")
-    +   '</select>'
+      energyBar()
+    + '<div class="tools">'
     +   '<span class="count" id="fshown"></span>'
     +   estLegend(searchHits)
     + '</div>'
@@ -730,18 +840,21 @@ function renderSearch(){
         ? '<button class="btn-gold more" id="more" onclick="moreResults()">Load more ('
           + (searchTotal - searchHits.length).toLocaleString("en-US") + ' left)</button>'
         : '');
-  document.getElementById("fset").addEventListener("change", drawFound);
   drawFound();
 }
-let lastSetFilter = "";
+function energyBar(){
+  return '<div class="etypes">'
+    + '<button class="' + (searchType ? "" : "on") + '" style="' + (searchType ? "" : "color:var(--gold)") + '" onclick="pickEnergy(\'\')">All types</button>'
+    + ENERGY.map(t => '<button class="' + (t === searchType ? "on" : "") + '" style="' + (t === searchType ? "color:" + TYPE_COLORS[t] : "") + '"'
+        + ' onclick="pickEnergy(\'' + t + '\')"><i style="background:' + TYPE_COLORS[t] + '"></i>' + t + '</button>').join("")
+    + '</div>';
+}
 function drawFound(){
-  const sel = document.getElementById("fset");
-  lastSetFilter = sel ? sel.value : "";
-  const list = lastSetFilter ? searchHits.filter(c => c.set && c.set.name === lastSetFilter) : searchHits;
+  const el = document.getElementById("found"); if(!el) return;
   document.getElementById("fshown").textContent =
-    "showing " + list.length + " of " + searchTotal.toLocaleString("en-US");
-  document.getElementById("found").innerHTML = list.map(findTile).join("")
-    || '<div class="msg" style="grid-column:1/-1">Nothing from that set in the results loaded so far.</div>';
+    "showing " + searchHits.length + " of " + searchTotal.toLocaleString("en-US")
+    + (searchType ? " " + searchType + "-type" : "") + " card" + (searchTotal === 1 ? "" : "s");
+  el.innerHTML = searchHits.map(findTile).join("");
 }
 function findTile(c){
   const s = c.set || {};
@@ -860,6 +973,7 @@ function sortSets(list){
 function renderSets(){
   VIEW = "sets";
   setTab();
+  if(!SETS.length) return;                  // still loading
   const term = qIn.value.trim().toLowerCase();
   let list = SETS.filter(s =>
     !term || s.name.toLowerCase().includes(term) || (s.series||"").toLowerCase().includes(term) ||
@@ -895,7 +1009,9 @@ async function openSet(id){
   app.innerHTML = setHeader(s) + '<div class="msg"><div class="spinner"></div>Opening the pack…</div>';
   window.scrollTo({top:0});
   try{
-    currentCards = await loadCards(id);
+    const cards = await loadCards(id);
+    if(VIEW !== "set" || current !== s) return;   // they moved on while it loaded
+    currentCards = cards;
     renderSetBody();
   }catch(e){
     app.innerHTML = setHeader(s) + '<div class="msg">' + esc(e.message)
@@ -1092,7 +1208,7 @@ function renderOwned(){
       + '<div class="hint" style="padding-top:40px"><h3>Nothing in your collection yet</h3>'
       + 'Hit <b style="color:#7ee38a">+ Add to collection</b> on any card in Card search, '
       + 'or open a card and hit <b style="color:#7ee38a">✓ I have this card</b>.'
-      + '<div class="egs"><button onclick="openScanner()">📷 Scan a card</button><button onclick="showSearch()">Search for a card</button>'
+      + '<div class="egs"><button onclick="showSearch()">Search for a card</button>'
       + '<button onclick="showSets()">Browse the sets</button></div></div>';
     return;
   }
@@ -1105,7 +1221,6 @@ function renderOwned(){
     +   '</div></div></div>'
     + '<div class="tools">'
     +   '<input type="search" id="oq" placeholder="Search your collection…" value="' + esc(ownedTerm) + '">'
-    +   '<button class="btn-gold" onclick="openScanner()">📷 Scan a card</button>'
     +   '<select id="osort" aria-label="Sort your collection" onchange="ownedSort=this.value;store.set(\'pkOwnedSort\',ownedSort);drawOwned()">'
     +     OWNED_SORTS.map(o => '<option value="' + o[0] + '"' + (o[0] === ownedSort ? " selected" : "") + '>' + o[1] + '</option>').join("")
     +   '</select>'
@@ -1147,626 +1262,6 @@ function drawOwned(){
   document.getElementById("oshown").textContent = term ? hits.length + " / " + list.length + " cards" : "";
   document.getElementById("ogrid").innerHTML = sortOwned(hits).map(ownedTile).join("")
     || '<div class="msg" style="grid-column:1/-1">Nothing in your collection matches “' + esc(ownedTerm.trim()) + '”.</div>';
-}
-
-/* ---------------- card scanner ----------------
-   A faster way into the collection: point the camera at a card and snap it. The site reads two
-   things off the photo with Tesseract.js — the card's name from the top strip and its collector
-   number ("199/165") from the bottom strip — and looks that printing up in the API.
-   Reading a photo is never trusted blindly: what was read shows in editable boxes, the matches are
-   ranked (number + set size + name), and you tap "+ Add to collection" on the right one.
-   Tesseract (script, wasm and English data from cdn.jsdelivr.net) loads only when the scanner opens;
-   nothing else on the site depends on it. The camera needs https or localhost; "Use a photo"
-   works anywhere, and on phones opens the camera app. */
-const TESS_SRC = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
-let scanStream = null, ocrWorker = null, ocrLoading = null, scanSeq = 0;
-let scanHits = [], scanRead = {name: "", num: "", total: ""};
-
-function openScanner(){
-  if(needSignIn()) return;                   // adding needs somewhere to save it
-  if(document.getElementById("scanner")) return;
-  buildScanner();
-  startCamera();
-  getOcr().catch(() => {});                  // warm the reader up while the camera starts
-}
-/* The scanner's markup on its own, with no camera — so the auto-snap can be tested by feeding the
-   <video> a drawn canvas stream instead of a real camera. */
-function buildScanner(){
-  document.body.insertAdjacentHTML("beforeend",
-    '<div class="modal" id="scanner" style="z-index:95" onclick="if(event.target===this)closeScanner()">'
-    + '<div class="sheet scan"><button class="x" onclick="closeScanner()">&times;</button>'
-    + '<h2>📷 Scan a card</h2>'
-    + '<div class="scansub">Hold the card flat inside the yellow box. It snaps by itself once the card is steady and sharp.</div>'
-    + '<div class="scanstage" id="scanstage"><video id="scanvideo" playsinline muted autoplay></video>'
-    +   '<div class="scanframe" id="scanframe"><span id="framelabel">Put a card in the box</span><i id="holdbar"></i></div></div>'
-    + '<div class="scanbtns">'
-    +   '<button class="btn-gold" id="snapbtn" onclick="snapCard()">📸 Snap</button>'
-    +   '<label class="back">🖼 Use a photo<input type="file" accept="image/*" hidden onchange="scanFile(this)"></label>'
-    +   '<label class="autotog"><input type="checkbox" id="autosnap"' + (autoSnapOn ? " checked" : "") + ' onchange="setAutoSnap(this.checked)">Snap by itself</label>'
-    + '</div>'
-    + '<div class="scanstatus" id="scanstatus">Starting the camera…</div>'
-    + '<div class="scanread" id="scanread" hidden>'
-    +   'Name <input id="scanname" placeholder="Card name" onkeydown="if(event.key===&quot;Enter&quot;)lookupScan()">'
-    +   'Number <input id="scannum" placeholder="199/165" onkeydown="if(event.key===&quot;Enter&quot;)lookupScan()">'
-    +   '<button class="back" style="padding:7px 12px;font-size:13px" onclick="lookupScan()">Search</button>'
-    + '</div>'
-    + '<div class="found" id="scanhits"></div>'
-    + '</div></div>');
-}
-function closeScanner(){
-  scanBusy = false;
-  stopAutoSnap();
-  stopCamera();
-  scanSeq++;                                  // drop any read still in flight
-  const m = document.getElementById("scanner"); if(m) m.remove();
-  scanHits = [];
-}
-async function startCamera(){
-  const status = document.getElementById("scanstatus"), stage = document.getElementById("scanstage");
-  const noCam = msg => {
-    if(stage) stage.innerHTML = '<div class="camerr"><div>' + msg + '</div></div>';
-    const b = document.getElementById("snapbtn"); if(b) b.hidden = true;
-    const typed = document.getElementById("scanread"); if(typed) typed.hidden = false;   // typing a card in still works
-    if(status) status.textContent = "";
-  };
-  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
-    return noCam("This browser can't use the camera here.<br>Tap <b>Use a photo</b> instead.");
-  }
-  try{
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: {facingMode: {ideal: "environment"}, width: {ideal: 2560}, height: {ideal: 1920}}, audio: false
-    });
-    if(!document.getElementById("scanner")){ stream.getTracks().forEach(t => t.stop()); return; }
-    scanStream = stream;
-    // widest zoom the camera offers (phones that support it), so it doesn't start zoomed in
-    const track = stream.getVideoTracks()[0];
-    try{
-      const caps = track && track.getCapabilities ? track.getCapabilities() : {};
-      if(caps.zoom) track.applyConstraints({advanced: [{zoom: caps.zoom.min}]}).catch(() => {});
-    }catch(e){}
-    attachVideo(stream);
-    if(status) status.textContent = autoSnapOn ? "Hold a card in the yellow box — it snaps by itself when it's steady and sharp."
-      : "Fit the card in the yellow box, then tap Snap.";
-  }catch(e){
-    const n = e && e.name;
-    noCam(n === "NotAllowedError" ? "The camera is blocked for this site.<br>Allow it from the icon in the address bar, or tap <b>Use a photo</b>."
-      : n === "NotFoundError" || n === "OverconstrainedError" ? "No camera found.<br>Tap <b>Use a photo</b> instead."
-      : "The camera didn't start (" + esc(n || e) + ").<br>Tap <b>Use a photo</b> instead.");
-  }
-}
-/* Show the stream in the stage, shaped like the camera's own picture so nothing is cropped away. */
-function attachVideo(stream){
-  const v = document.getElementById("scanvideo");
-  if(!v) return;
-  v.onloadedmetadata = v.onresize = fitStage;
-  v.srcObject = stream;
-  v.play().catch(() => {});
-  startAutoSnap();
-}
-function fitStage(){
-  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
-  if(!v || !stage || !v.videoWidth) return;
-  stage.style.aspectRatio = v.videoWidth + " / " + v.videoHeight;
-  // a portrait picture has room to spare above and below the card; a landscape one doesn't
-  stage.style.setProperty("--fh", Math.round(frameHeight(v.videoWidth, v.videoHeight) * 100) + "%");
-}
-function frameHeight(vw, vh){ return vh >= vw ? 0.68 : 0.84; }
-function stopCamera(){
-  if(scanStream){ scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
-}
-
-function loadTesseract(){
-  if(window.Tesseract) return Promise.resolve();
-  if(!ocrLoading){
-    ocrLoading = new Promise((res, rej) => {
-      const sc = document.createElement("script");
-      sc.src = TESS_SRC;
-      sc.onload = res;
-      sc.onerror = () => { ocrLoading = null; sc.remove(); rej(new Error("Couldn't load the card reader — check your connection.")); };
-      document.head.appendChild(sc);
-    });
-  }
-  return ocrLoading;
-}
-// one shared reader; a failed load clears it so the next snap tries again
-function getOcr(){
-  if(!ocrWorker){
-    ocrWorker = loadTesseract()
-      .then(() => Tesseract.createWorker("eng"))
-      .catch(e => { ocrWorker = null; throw e; });
-  }
-  return ocrWorker;
-}
-
-/* The yellow box is centred on the stage at 84% of its height with a card's shape; the video is
-   drawn object-fit:cover, so map that box back into the video's own pixels to crop the card. */
-/* Where the yellow box sits in the video's own pixels. The video is drawn object-fit:contain, so
-   undo that scale and letterboxing. Everything that reads a frame — Snap and auto-snap — uses this. */
-function frameCrop(v, stage){
-  const sw = stage.clientWidth, sh = stage.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
-  const scale = Math.min(sw / vw, sh / vh);
-  const fh = sh * frameHeight(vw, vh), fw = fh * 63 / 88;
-  const fx = (sw - fw) / 2, fy = (sh - fh) / 2;
-  const ox = (sw - vw * scale) / 2, oy = (sh - vh * scale) / 2;
-  const cx = Math.max(0, (fx - ox) / scale), cy = Math.max(0, (fy - oy) / scale);
-  return {x: cx, y: cy, w: Math.min(vw - cx, fw / scale), h: Math.min(vh - cy, fh / scale)};
-}
-function snapCard(){
-  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
-  if(!v || !v.videoWidth || scanBusy) return;
-  const r = frameCrop(v, stage);
-  const card = document.createElement("canvas");
-  card.width = Math.round(r.w); card.height = Math.round(r.h);
-  card.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, card.width, card.height);
-  readAndLookup(card);
-}
-
-/* ---- auto-snap ----
-   Five times a second, look at a tiny grey copy of the yellow box (plus a margin) and ask:
-   - is a card lined up with it? — a straight edge (a column or row of strong contrast) near at
-     least 3 of the 4 sides, clearly stronger than the background's general texture;
-   - is it sharp? — enough fine detail (Laplacian) inside the card;
-   - is it steady? — the picture barely changed since the last look.
-   When all three hold for AUTO_HOLD looks in a row, snap. Then wait: it won't snap again until
-   the card has left the box, so one card isn't scanned over and over.
-   Thresholds were tuned on drawn test frames of real card art on wood / carpet / dark / white
-   desks, with and without sensor noise, not a real camera. Measured: a still card moves 2.5–3.5,
-   6px of motion is 10+; a card 85–100% of the box (or tilted 6°) finds 3–4 edges, an empty desk or
-   a card at 60% finds 0. Focus (focusScore) is 0.65–0.73 for every sharp card tried — text-heavy
-   1999 cards, full arts, a plain Energy — 0.52–0.62 at a 1.5px blur, ≤0.49 at 3px, 0 on a bare desk.
-   Through a video stream the same sharp Pikachu scored 0.60, so AUTO_FOCUS sits a little lower at 0.56.
-   A real camera's video compression may pull sharp frames lower still, so a card that has held its best
-   focus (≥92% of its peak, and not below AUTO_FOCUS_FLOOR) for AUTO_PATIENT looks also counts. */
-const AUTO_W = 72, AUTO_H = 100, AUTO_HOLD = 5, AUTO_PATIENT = 10;
-const AUTO_EDGE = 1.9, AUTO_STEADY = 8, AUTO_FOCUS = 0.56, AUTO_FOCUS_FLOOR = 0.45;
-let autoSnapOn = store.get("pkAutoSnap", true);
-let autoTimer = null, autoPrev = null, autoGood = 0, autoArmed = true, autoEmpty = 0, scanBusy = false;
-let autoPeak = 0, autoPresent = 0;          // best focus seen, and how long, since this card came into the box
-function setAutoSnap(on){
-  autoSnapOn = !!on;
-  store.set("pkAutoSnap", autoSnapOn);
-  autoGood = 0; showHold(false, 0);
-  const st = document.getElementById("scanstatus");
-  if(st && !scanBusy && !scanHits.length) st.textContent = autoSnapOn
-    ? "Hold a card in the yellow box — it snaps by itself when it's steady and sharp." : "Fit the card in the yellow box, then tap Snap.";
-}
-function startAutoSnap(){
-  stopAutoSnap();
-  autoArmed = true; autoPrev = null; autoEmpty = 0;
-  autoTimer = setInterval(autoTick, 200);
-}
-function stopAutoSnap(){
-  if(autoTimer) clearInterval(autoTimer);
-  autoTimer = null; autoGood = 0;
-}
-/* Grey pixels of the box plus a 10% margin each side, AUTO_W × AUTO_H. */
-function frameGrey(src, r){
-  const mx = r.w * 0.1, my = r.h * 0.1;
-  const c = frameGrey.c || (frameGrey.c = document.createElement("canvas"));
-  c.width = AUTO_W; c.height = AUTO_H;
-  const g = c.getContext("2d", {willReadFrequently: true});
-  g.drawImage(src, r.x - mx, r.y - my, r.w + 2 * mx, r.h + 2 * my, 0, 0, AUTO_W, AUTO_H);
-  const d = g.getImageData(0, 0, AUTO_W, AUTO_H).data, out = new Float32Array(AUTO_W * AUTO_H);
-  for(let i = 0, j = 0; i < d.length; i += 4, j++) out[j] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-  return out;
-}
-function frameStats(gr, prev){
-  const W = AUTO_W, H = AUTO_H, at = (x, y) => gr[y * W + x];
-  // general texture: mean gradient over the whole picture
-  let tex = 0, n = 0;
-  for(let y = 1; y < H - 1; y++) for(let x = 1; x < W - 1; x++){ tex += Math.abs(at(x+1, y) - at(x-1, y)) + Math.abs(at(x, y+1) - at(x, y-1)); n++; }
-  tex /= n;
-  // strongest straight edge in the outer band of each side (the card's edge lands ~8% in)
-  const colEdge = (x0, x1) => { let best = 0; for(let x = Math.max(1, x0); x <= Math.min(W - 2, x1); x++){ let m = 0; for(let y = Math.round(H * 0.15); y < H * 0.85; y++) m += Math.abs(at(x+1, y) - at(x-1, y)); best = Math.max(best, m / (H * 0.7)); } return best; };
-  const rowEdge = (y0, y1) => { let best = 0; for(let y = Math.max(1, y0); y <= Math.min(H - 2, y1); y++){ let m = 0; for(let x = Math.round(W * 0.15); x < W * 0.85; x++) m += Math.abs(at(x, y+1) - at(x, y-1)); best = Math.max(best, m / (W * 0.7)); } return best; };
-  const bw = Math.round(W * 0.2), bh = Math.round(H * 0.2);
-  const sides = [colEdge(0, bw), colEdge(W - 1 - bw, W - 1), rowEdge(0, bh), rowEdge(H - 1 - bh, H - 1)];
-  const edges = sides.filter(e => e > AUTO_EDGE * (tex / 2) + 6).length;
-  // movement since the last look
-  let move = 99;
-  if(prev){ move = 0; for(let i = 0; i < gr.length; i++) move += Math.abs(gr[i] - prev[i]); move /= gr.length; }
-  return {edges: edges, move: move, tex: tex, card: edges >= 3, still: move <= AUTO_STEADY};
-}
-/* How much of the picture's fine detail a small blur takes away (after Crété-Roffet): a sharp
-   picture loses a lot, an already blurry one hardly changes — so it doesn't depend on how much
-   print or art a card has. Measured on the top half of the card at 240×150. */
-function focusScore(src, r){
-  const FW = 240, FH = 150;
-  const c = focusScore.c || (focusScore.c = document.createElement("canvas"));
-  c.width = FW; c.height = FH;
-  const g = c.getContext("2d", {willReadFrequently: true});
-  g.drawImage(src, r.x + r.w * 0.06, r.y + r.h * 0.04, r.w * 0.88, r.w * 0.88 * FH / FW, 0, 0, FW, FH);
-  const d = g.getImageData(0, 0, FW, FH).data, L = new Float32Array(FW * FH), T = new Float32Array(FW * FH), B = new Float32Array(FW * FH);
-  for(let i = 0, j = 0; i < d.length; i += 4, j++) L[j] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-  for(let y = 0; y < FH; y++) for(let x = 0; x < FW; x++){      // box blur 5, across then down
-    let s = 0, n = 0; for(let k = -2; k <= 2; k++){ const xx = x + k; if(xx >= 0 && xx < FW){ s += L[y * FW + xx]; n++; } }
-    T[y * FW + x] = s / n;
-  }
-  for(let y = 0; y < FH; y++) for(let x = 0; x < FW; x++){
-    let s = 0, n = 0; for(let k = -2; k <= 2; k++){ const yy = y + k; if(yy >= 0 && yy < FH){ s += T[yy * FW + x]; n++; } }
-    B[y * FW + x] = s / n;
-  }
-  let all = 0, lost = 0;
-  for(let y = 0; y < FH - 1; y++) for(let x = 0; x < FW - 1; x++){
-    const i = y * FW + x;
-    const o = Math.abs(L[i] - L[i + FW]) + Math.abs(L[i] - L[i + 1]);
-    const b = Math.abs(B[i] - B[i + FW]) + Math.abs(B[i] - B[i + 1]);
-    all += o; lost += Math.max(0, o - b);
-  }
-  return all ? lost / all : 0;
-}
-function autoTick(){
-  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
-  if(!document.getElementById("scanner")){ stopAutoSnap(); return; }
-  if(!v || !v.videoWidth || !stage) return;
-  let st;
-  try{
-    const crop = frameCrop(v, stage);
-    const gr = frameGrey(v, crop);
-    st = frameStats(gr, autoPrev);
-    autoPrev = gr;
-    st.focus = st.card ? focusScore(v, crop) : 0;
-  }catch(e){ return; }
-  if(st.card){ autoPresent++; if(st.still) autoPeak = Math.max(autoPeak, st.focus); }
-  else { autoPresent = 0; autoPeak = 0; }
-  st.focused = st.focus >= AUTO_FOCUS
-    || (st.focus >= AUTO_FOCUS_FLOOR && st.focus >= autoPeak * 0.92 && autoPresent >= AUTO_PATIENT);
-  autoTick.last = st;                          // handy when checking the numbers by hand
-  // re-arm once the snapped card has gone
-  autoEmpty = st.card ? 0 : autoEmpty + 1;
-  if(!autoArmed && autoEmpty >= 3) autoArmed = true;
-  const good = st.card && st.focused && st.still;
-  if(!autoSnapOn || scanBusy || !autoArmed){ autoGood = 0; showHold(st.card && autoArmed, 0, !autoArmed && st.card); return; }
-  autoGood = good ? autoGood + 1 : 0;
-  showHold(st.card, autoGood / AUTO_HOLD, false, st);
-  if(autoGood >= AUTO_HOLD){
-    autoGood = 0; autoArmed = false;
-    showHold(false, 0, true);
-    snapCard();
-  }
-}
-function showHold(ready, fill, done, st){
-  const f = document.getElementById("scanframe"), bar = document.getElementById("holdbar"), label = document.getElementById("framelabel");
-  if(!f) return;
-  f.classList.toggle("ready", !!ready);
-  if(bar) bar.style.width = Math.min(100, Math.round(fill * 100)) + "%";
-  if(label) label.textContent = done ? "Got it — take the card out for the next one"
-    : !autoSnapOn ? "Fit the card in the box"
-    : ready ? (fill > 0 ? "Hold still…" : st && !st.still ? "Hold it steady" : st && !st.focused ? "Getting it sharp…" : "Hold it steady")
-    : "Put a card in the box";
-}
-function scanFile(input){
-  const f = input.files && input.files[0];
-  input.value = "";
-  if(!f) return;
-  const img = new Image();
-  img.onload = () => {
-    const c = document.createElement("canvas");
-    c.width = img.naturalWidth; c.height = img.naturalHeight;
-    c.getContext("2d").drawImage(img, 0, 0);
-    URL.revokeObjectURL(img.src);
-    readAndLookup(c, true);
-  };
-  img.onerror = () => setScanStatus("That file isn't a picture the browser can open.");
-  img.src = URL.createObjectURL(f);
-}
-function setScanStatus(html){ const el = document.getElementById("scanstatus"); if(el) el.innerHTML = html; }
-
-let scanSig = null;          // colour signature of the last snapped card, for matching pictures
-
-async function readAndLookup(card, isPhoto){
-  const seq = ++scanSeq;
-  scanBusy = true;
-  const btn = document.getElementById("snapbtn"); if(btn) btn.disabled = true;
-  scanHits = []; drawScanHits();                // don't leave the last card's matches up to be tapped by mistake
-  setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Reading the card…');
-  try{
-    scanSig = artSignature(card, card.width, card.height);
-    const read = await readCard(card, isPhoto);
-    if(seq !== scanSeq) return;
-    scanRead = read;
-    const top = read.numbers[0];
-    document.getElementById("scanread").hidden = false;
-    document.getElementById("scanname").value = read.name;
-    document.getElementById("scannum").value = top ? top.num + "/" + top.total : "";
-    await lookupScan(seq, read);
-  }catch(e){
-    if(seq === scanSeq) setScanStatus(esc(e.message || e));
-  }finally{
-    if(btn) btn.disabled = false;
-    if(seq === scanSeq) scanBusy = false;       // a newer read still running keeps it busy
-  }
-}
-
-/* ---- reading text off the card ---- */
-
-/* Crops a strip of the card, scales it up and flattens it to high-contrast grey — Tesseract reads
-   small printed text far better that way. invert=true handles light text on dark or foil cards. */
-function strip(card, x0, y0, x1, y1, invert){
-  const w = card.width * (x1 - x0), h = card.height * (y1 - y0);
-  const k = Math.max(1, 1400 / w);
-  const c = document.createElement("canvas");
-  c.width = Math.round(w * k); c.height = Math.round(h * k);
-  const g = c.getContext("2d", {willReadFrequently: true});
-  g.imageSmoothingQuality = "high";
-  g.drawImage(card, card.width * x0, card.height * y0, w, h, 0, 0, c.width, c.height);
-  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
-  let lo = 255, hi = 0;
-  for(let i = 0; i < d.length; i += 4){
-    const l = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    d[i] = l; if(l < lo) lo = l; if(l > hi) hi = l;
-  }
-  const span = Math.max(1, hi - lo);
-  for(let i = 0; i < d.length; i += 4){
-    let l = (d[i] - lo) * 255 / span;
-    if(invert) l = 255 - l;
-    d[i] = d[i+1] = d[i+2] = l;
-  }
-  g.putImageData(im, 0, 0);
-  return c;
-}
-/* Hard black-and-white version of a region. Full-art and foil cards print the number as small
-   slanted white text with a dark outline, which plain contrast can't read; keeping only the darkest
-   pixels (the outline) or only the brightest (the fill) turns it back into readable ink. */
-function inked(card, x0, y0, x1, y1, thr, keepBright){
-  const w = card.width * (x1 - x0), h = card.height * (y1 - y0), k = 1800 / w;
-  const c = document.createElement("canvas");
-  c.width = Math.round(w * k); c.height = Math.round(h * k);
-  const g = c.getContext("2d", {willReadFrequently: true});
-  g.imageSmoothingQuality = "high";
-  g.drawImage(card, card.width * x0, card.height * y0, w, h, 0, 0, c.width, c.height);
-  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
-  for(let i = 0; i < d.length; i += 4){
-    const l = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
-    d[i] = d[i+1] = d[i+2] = (keepBright ? l > thr : l < thr) ? 0 : 255;
-  }
-  g.putImageData(im, 0, 0);
-  return c;
-}
-async function ocrRun(canvas, psm, whitelist){
-  const w = await getOcr();
-  await w.setParameters({tessedit_pageseg_mode: String(psm), tessedit_char_whitelist: whitelist || ""});
-  return (await w.recognize(canvas, {}, {text: true, blocks: true})).data;
-}
-async function ocrText(canvas, psm, whitelist){ return (await ocrRun(canvas, psm, whitelist)).text || ""; }
-
-/* The card's name is the biggest text on its top strip, so take the tallest real word there (and
-   the equally tall words beside it — "Mr. Mime"). Small print like "STAGE 2" and "Evolves from
-   Charmeleon" loses on height. */
-const NAME_JUNK = /^(basic|stage|stage1|stage2|hp|evolves|from|put|on|the|trainer|item|supporter|stadium|tool|pokemon|pokémon|energy|special|ability|mega|v|vmax|vstar|ex|gx|tag|team|rule|lv|level|break|prism|star|radiant|x|y)$/i;
-function nameFromWords(data){
-  const lines = [];
-  for(const bl of data.blocks || []) for(const pa of bl.paragraphs || []) for(const li of pa.lines || []) lines.push(li);
-  const clean = t => t.replace(/[^A-Za-zÀ-ÿ'’.\-]/g, "");
-  const usable = w => {
-    const t = clean(w.text);
-    return t.replace(/[^A-Za-zÀ-ÿ]/g, "").length >= 3 && !NAME_JUNK.test(t.replace(/[.'’-]/g, ""))
-      && !/tage|basic|evolve/i.test(t) && w.confidence >= 35;
-  };
-  let best = null, bestLine = null;
-  for(const li of lines) for(const w of li.words || []){
-    if(!usable(w)) continue;
-    const h = w.bbox.y1 - w.bbox.y0;
-    if(!best || h > best.h){ best = {h: h, t: clean(w.text)}; bestLine = li; }
-  }
-  if(!best) return "";
-  const parts = bestLine.words.filter(w => (w.bbox.y1 - w.bbox.y0) >= best.h * 0.7)
-    .map(w => clean(w.text)).filter(t => /[A-Za-zÀ-ÿ]{2,}/.test(t) && !NAME_JUNK.test(t.replace(/[.'’-]/g, "")));
-  return (parts.slice(0, 3).join(" ") || best.t).slice(0, 40);
-}
-
-/* What's typed in the Number box: "199/165", "004/165", "TG12/TG30", "GG13/GG70". */
-function findNumber(text){
-  const m = String(text).toUpperCase().replace(/\s*\/\s*/g, "/").match(/\b([A-Z]{0,3}\d{1,3})\/([A-Z]{0,3}\d{1,3})\b/);
-  return m ? {num: m[1], total: m[2]} : null;
-}
-
-/* Number candidates from OCR text. A tiny slanted number reads noisily — "199/165" comes back as
-   "7199/4165", "1997165" (slash read as a digit) or "020/789" (italic 1 read as 7). So every
-   plausible reading is tried and scored: trimming stray leading digits costs a little, trimming the
-   set size or swapping 7→1 costs more, and a reading only counts at all if its total is a real set
-   size from SETS and the number fits that set (secret rares run past it, so up to +150). */
-function numberFits(num, total, totals){
-  const n = parseInt(num, 10), t = parseInt(total, 10);
-  if(!(n >= 1) || !(t >= 1) || num.length > 3 || total.length > 3) return false;
-  if(totals.size && !totals.has(t)) return false;
-  return n <= t + 150;
-}
-function numberCandidates(text){
-  const totals = new Set(SETS.map(x => x.printedTotal).filter(Boolean));
-  const t = String(text).replace(/[|\\]/g, "/").replace(/(?<=\d)[Oo]|[Oo](?=\d)/g, "0").replace(/(?<=\d)[Il]|[Il](?=\d)/g, "1");
-  const out = [];
-  const add = (num, total, score) => {
-    if(!numberFits(num, total, totals)) return;
-    if(parseInt(total, 10) < 30) score *= 0.4;          // tiny sets are promos, rarely what's in hand
-    out.push({num: num, total: total, score: score});
-  };
-  const swaps = str => {
-    const v = [[str, 0]];
-    for(let i = 0; i < str.length; i++) if(str[i] === "7") v.push([str.slice(0, i) + "1" + str.slice(i + 1), 0.4]);
-    return v;
-  };
-  const pre = t.match(/\b([A-Z]{1,3})(\d{1,3})\s*\/\s*([A-Z]{1,3})(\d{1,3})\b/);
-  if(pre && pre[1] === pre[3]) out.push({num: pre[1] + pre[2], total: pre[3] + pre[4], score: 4});
-  for(const m of t.matchAll(/(\d{1,5})\s*\/\s*(\d{1,5})/g)){
-    for(let i = 0; i < m[1].length; i++) for(let j = 0; j <= m[2].length - 2; j++)
-      for(const [n, pn] of swaps(m[1].slice(i))) for(const [tt, pt] of swaps(m[2].slice(j)))
-        add(n, tt, 3 - 0.3 * i - 0.8 * j - pn - pt);
-  }
-  for(const m of t.matchAll(/\d{4,8}/g)){
-    const run = m[0];
-    for(let i = 1; i < run.length; i++) for(const skip of [1, 0]){
-      const total = run.slice(i + skip);
-      if(total.length < 2) continue;
-      for(let k = 0; k < i; k++) for(const [n, pn] of swaps(run.slice(k, i))) for(const [tt, pt] of swaps(total))
-        add(n, tt, (skip ? 1 : 0.6) - 0.3 * k - pn - pt);
-    }
-  }
-  return out;
-}
-
-async function readCard(card, isPhoto){
-  const name = nameFromWords(await ocrRun(strip(card, 0.02, 0.015, 0.8, 0.13), 11));
-
-  // number: modern cards print it bottom-left, older ones bottom-right. Cheapest reads first;
-  // stop as soon as the readings agree strongly on one number.
-  const digits = "0123456789/";
-  const L = [0, 0.88, 0.45, 0.99], R = [0.6, 0.915, 1, 1];
-  const passes = [
-    () => ocrText(strip(card, 0, 0.87, 1, 0.995), 11),
-    () => ocrText(strip(card, L[0], L[1], L[2], L[3]), 11),
-    () => ocrText(strip(card, R[0], R[1], R[2], R[3]), 11),
-    () => ocrText(inked(card, L[0], L[1], L[2], L[3], 60, false), 11, digits),
-    () => ocrText(inked(card, L[0], L[1], L[2], L[3], 235, true), 11, digits),
-    () => ocrText(inked(card, R[0], R[1], R[2], R[3], 90, false), 11, digits),
-    () => ocrText(inked(card, R[0], R[1], R[2], R[3], 235, true), 11, digits)
-  ];
-  if(isPhoto) passes.push(() => ocrText(strip(card, 0, 0, 1, 1), 11));   // a loose photo: look everywhere
-  const tally = {};
-  const keyOf = c => (/^\d+$/.test(c.num) ? String(parseInt(c.num, 10)) : c.num) + "/" + (/^\d+$/.test(c.total) ? String(parseInt(c.total, 10)) : c.total);
-  for(const pass of passes){
-    for(const c of numberCandidates(await pass())) tally[keyOf(c)] = (tally[keyOf(c)] || 0) + c.score;
-    const top = Object.values(tally).sort((x, y) => y - x)[0];
-    if(top >= 3) break;
-  }
-  const numbers = Object.entries(tally).sort((x, y) => y[1] - x[1]).slice(0, 3)
-    .map(([k, v]) => ({num: k.split("/")[0], total: k.split("/")[1], score: v}));
-  return {name: name, numbers: numbers};
-}
-
-/* ---- matching pictures ----
-   A small colour thumbnail of the artwork area, centred and scaled to unit length, so comparing
-   two is a correlation: ~1 for the same card even under different light, low for different art. */
-const SIG_W = 12, SIG_H = 16;
-function artSignature(src, w, h){
-  try{
-    const c = document.createElement("canvas");
-    c.width = SIG_W; c.height = SIG_H;
-    const g = c.getContext("2d", {willReadFrequently: true});
-    g.drawImage(src, w * 0.08, h * 0.1, w * 0.84, h * 0.42, 0, 0, SIG_W, SIG_H);
-    const d = g.getImageData(0, 0, SIG_W, SIG_H).data;
-    const v = new Float32Array(SIG_W * SIG_H * 3);
-    for(let i = 0, j = 0; i < d.length; i += 4){ v[j++] = d[i]; v[j++] = d[i+1]; v[j++] = d[i+2]; }
-    let mean = 0; for(const x of v) mean += x; mean /= v.length;
-    let norm = 0; for(let i = 0; i < v.length; i++){ v[i] -= mean; norm += v[i] * v[i]; }
-    norm = Math.sqrt(norm) || 1;
-    for(let i = 0; i < v.length; i++) v[i] /= norm;
-    return v;
-  }catch(e){ return null; }                     // a picture the browser won't let us read
-}
-const sigCache = new Map();
-function cardSignature(c){
-  if(sigCache.has(c.id)) return sigCache.get(c.id);
-  const url = c.images && (c.images.small || c.images.large);
-  const job = !url ? Promise.resolve(null) : new Promise(res => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";               // needed to read its pixels
-    img.onload = () => res(artSignature(img, img.naturalWidth, img.naturalHeight));
-    img.onerror = () => res(null);
-    img.src = url + (url.includes("?") ? "&" : "?") + "scan=1";   // not the grid's cached no-CORS copy
-    setTimeout(() => res(null), 8000);
-  });
-  sigCache.set(c.id, job);
-  return job;
-}
-function sigMatch(a, b){
-  if(!a || !b) return 0;
-  let s = 0; for(let i = 0; i < a.length; i++) s += a[i] * b[i];
-  return s;
-}
-function nameSim(a, b){
-  const grams = x => { x = String(x || "").toLowerCase().replace(/[^a-z]/g, ""); const g = []; for(let i = 0; i < x.length - 1; i++) g.push(x.slice(i, i + 2)); return g; };
-  const ga = grams(a), gb = grams(b);
-  if(!ga.length || !gb.length) return 0;
-  const pool = gb.slice(); let hit = 0;
-  for(const g of ga){ const k = pool.indexOf(g); if(k >= 0){ hit++; pool.splice(k, 1); } }
-  return 2 * hit / (ga.length + gb.length);
-}
-
-/* ---- finding the card ----
-   Gather likely cards from what was read (number + set size, the number on its own in case the
-   set size misread, the number with a letter prefix like GG13, and the name), then rank them by
-   number match, name likeness and — most of all — how much their picture looks like the photo. */
-async function lookupScan(seqIn, read){
-  const seq = seqIn || ++scanSeq;
-  const typedName = cleanScanName((document.getElementById("scanname") || {}).value);
-  const typedNum = ((document.getElementById("scannum") || {}).value || "").trim();
-  let numbers;
-  if(read) numbers = read.numbers;
-  else{
-    const f = findNumber(typedNum);
-    numbers = f ? [{num: f.num, total: f.total, score: 3}]
-      : (/^[A-Z]{0,3}\d{1,3}$/i.test(typedNum) ? [{num: typedNum.toUpperCase(), total: "", score: 2}] : []);
-  }
-  const name = typedName;
-  if(!name && !numbers.length){
-    setScanStatus("Couldn't read this card. Snap it again with the name and the number at the bottom in focus — or type them in the boxes above.");
-    document.getElementById("scanread").hidden = false;
-    scanHits = []; drawScanHits();
-    return;
-  }
-  setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Finding '
-    + esc([name, numbers[0] ? numbers[0].num + (numbers[0].total ? "/" + numbers[0].total : "") : ""].filter(Boolean).join(" · ")) + '…');
-
-  const apiNum = n => /^\d+$/.test(n) ? String(parseInt(n, 10)) : String(n).toUpperCase();
-  const queries = [];
-  numbers.slice(0, 2).forEach(n => { if(/^\d+$/.test(n.total)) queries.push('number:"' + apiNum(n.num) + '" set.printedTotal:' + parseInt(n.total, 10)); });
-  if(numbers[0]){
-    queries.push('number:"' + apiNum(numbers[0].num) + '"');
-    if(/^\d+$/.test(numbers[0].num) && /^\d+$/.test(numbers[0].total)) queries.push('number:"*' + apiNum(numbers[0].num) + '" set.printedTotal:' + parseInt(numbers[0].total, 10));
-  }
-  const firstWord = name.split(" ").sort((x, y) => y.length - x.length)[0] || "";
-  if(firstWord.length >= 3) queries.push('name:"*' + firstWord + '*"');
-
-  // all at once — the free API is slow and retries a lot, so waiting on each in turn adds up
-  const settled = await Promise.allSettled(queries.map(q =>
-    getJSON(API + "/cards?q=" + encodeURIComponent(q) + "&orderBy=-set.releaseDate&pageSize=" + (q.startsWith("name:") ? 100 : 60))));
-  if(seq !== scanSeq) return;
-  const pool = new Map();
-  for(const r of settled) if(r.status === "fulfilled") for(const c of r.value.data || []) pool.set(c.id, c);
-  if(!settled.some(r => r.status === "fulfilled")){
-    scanHits = []; drawScanHits();              // never leave the last card's matches showing
-    setScanStatus("The Pokémon TCG API isn't answering right now — tap Search in a moment.");
-    return;
-  }
-  const cards = [...pool.values()];
-  remember(cards);
-
-  // text score first, then compare pictures for the best few dozen
-  const textScore = c => {
-    let best = 0;
-    numbers.forEach((n, k) => {
-      const numOk = String(c.number).toUpperCase() === apiNum(n.num);
-      const suffixOk = String(c.number).toUpperCase().endsWith(apiNum(n.num));
-      const totOk = n.total && c.set && String(c.set.printedTotal) === String(parseInt(n.total, 10));
-      const pts = numOk && totOk ? 4 - k * 0.6 : suffixOk && totOk ? 3 - k * 0.6 : numOk ? 1.5 - k * 0.3 : 0;
-      if(pts > best) best = pts;
-    });
-    return best + 3 * nameSim(c.name, name);
-  };
-  // with a number to go on, the right card is near the top already; with only a name, look at more pictures
-  const ranked = cards.map(c => ({c: c, t: textScore(c), img: 0})).sort((x, y) => y.t - x.t).slice(0, numbers.length ? 30 : 60);
-  if(scanSig){                                   // a typed re-search still compares against the last snap
-    setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Comparing pictures…');
-    const sigs = await Promise.all(ranked.map(r => cardSignature(r.c)));
-    if(seq !== scanSeq) return;
-    ranked.forEach((r, i) => { r.img = Math.max(0, sigMatch(scanSig, sigs[i])); });
-  }
-  ranked.forEach(r => { r.total = r.t + 6 * r.img; });
-  ranked.sort((x, y) => y.total - x.total);
-  scanHits = ranked.slice(0, 12).map(r => r.c);
-
-  const top = ranked[0], next = ranked[1];
-  const sure = top && (top.t >= 4 || top.img >= 0.8) && (!next || top.total - next.total >= 1.2);
-  setScanStatus(!top ? "No card matched. Fix the name or number above and hit Search."
-    : sure ? "Found it: <b>" + esc(top.c.name) + "</b> from " + esc((top.c.set || {}).name || "") + " — tap <b>+ Add to collection</b>. Wrong one? The next closest are below it."
-    : "Here are the closest matches — tap <b>+ Add to collection</b> on yours, or fix the name or number above and hit Search.");
-  drawScanHits();
-}
-function cleanScanName(v){ return String(v || "").replace(/[^A-Za-zÀ-ÿ0-9'’.\- ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40); }
-function drawScanHits(){
-  const el = document.getElementById("scanhits"); if(!el) return;
-  el.innerHTML = scanHits.map(findTile).join("");
 }
 
 /* ---------------- accounts ----------------
@@ -2193,7 +1688,6 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape"){
     if(document.getElementById("signin")) closeSignIn(true);
     else if(document.getElementById("modal")) closeCard();
-    else if(document.getElementById("scanner")) closeScanner();
     else if(VIEW === "set" || VIEW === "search") showSets();
   }
 });

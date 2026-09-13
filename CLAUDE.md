@@ -11,9 +11,9 @@ in it; click a card for the full card detail and market prices.
 Sections, switched from the header:
 
 - **Packs** — the set grid, and one set's cards.
-- **Card search** — search every card ever printed by name. Each *printing* comes back as its own
-  result (set, number, rarity, price), and the card sheet has a printing picker so you can pin
-  down the exact copy you own.
+- **Card search** — search every card ever printed by name and/or **energy type**. Each *printing*
+  comes back as its own result (set, number, rarity, price), and the card sheet has a printing
+  picker so you can pin down the exact copy you own.
 - **View more ›** — not a dropdown. It reveals the remaining tabs *in the same row*, styled
   identically to Packs and Card search, and becomes "Fewer ‹". The row starts collapsed, and
   auto-expands whenever you're in one of the hidden sections so the active tab is never hidden.
@@ -45,9 +45,31 @@ There's a `pokemon-packs` entry in `C:\Users\arche\.claude\launch.json` on port 
 
 Live from the free [Pokémon TCG API](https://pokemontcg.io) (`api.pokemontcg.io/v2`), no API key.
 
-- `GET /sets?pageSize=250` — all sets in one call, cached in `localStorage` for 24h (`pkSets`).
-- `GET /cards?q=set.id:<id>&pageSize=250&page=N` — one set's cards, paginated, cached in memory
-  for the session. Full card objects come back, so the detail modal needs no second request.
+- `GET /sets?pageSize=250` — all sets in one call.
+- `GET /cards?q=set.id:<id>&pageSize=250&page=N` — one set's cards, paginated. Full card objects
+  come back, so the detail modal needs no second request.
+
+### Saved copies (cache) — show instantly, check every time
+
+The user asked for a cache that still "checks every time to see if there's been an update".
+`cachedFetch(key, fetcher, onUpdate)` does stale-while-revalidate for the sets list (`sets`), each
+set's cards (`set:<id>`) and every search page (`search:<type>|<term>|<page>`):
+
+- A saved copy (memory for this visit, else IndexedDB `pokedex-cache`) is returned immediately.
+- Every use also asks the API in the background; if the JSON differs, the saved copy is replaced
+  and `onUpdate` redraws in place — `refreshSetBody` keeps the set's filter values and scroll (and
+  leaves a booster-pack pull alone), search swaps just that page into `searchHits`, the set list
+  re-renders keeping scroll. No saved copy → it waits for the API as before.
+- Failed background checks retry at 4s / 15s / 45s (`CACHE_RETRY`) — the free API fails outright
+  often enough that without this a stale copy just stays (seen in testing).
+- The same key isn't re-checked within 60s in one visit (`CACHE_RECHECK_MS`), for the ~1000/day limit.
+- **IndexedDB, never localStorage** — set data is hundreds of KB and localStorage holds the accounts.
+  The old `pkSets` localStorage copy is moved into IndexedDB once and deleted. LRU cap 250 entries.
+  If IndexedDB is unavailable, everything simply loads from the network.
+
+Measured: set list ~8s → instant (2ms read), 151 set 7.3s → 13ms, a Pikachu search 10.9s → 4ms.
+A planted wrong price ($1.23) corrected itself on screen to $368.78 once the check came back, with the
+filter and scroll kept.
 
 ## Pack prices
 
@@ -112,10 +134,20 @@ Escape closes the card sheet, then backs out to the set list.
 
 ### Card search
 
-`GET /cards?q=name:"*term*"&orderBy=-set.releaseDate,number&pageSize=60&page=N`. The quoted
-wildcard is what makes partial words and names with punctuation (`Mr. Mime`) both work. Typing is
-debounced 350ms and every search carries a `searchSeq` so a slow response from an abandoned query
-can't overwrite a newer one.
+`GET /cards?q=name:"*term*" types:<Type>&orderBy=-set.releaseDate,number&pageSize=60&page=N`. The
+quoted wildcard is what makes partial words and names with punctuation (`Mr. Mime`) both work.
+Typing is debounced 350ms and every search carries a `searchSeq` so a slow response from an
+abandoned query can't overwrite a newer one.
+
+**Search narrows by energy type, not by set** (the user asked for this; there used to be an "All
+sets" dropdown over the loaded results — don't bring it back). `energyBar()` draws All types +
+the 11 energy types (`ENERGY`, coloured from `TYPE_COLORS`) above every search state, including
+the empty hint, "no results" and the API-error screen, so the type can always be changed.
+`pickEnergy(t)` toggles `searchType` (tap the chosen type again for All types) and re-runs the
+search. The type goes into the **API query** (`types:Fire`), so `totalCount` and Load more stay
+correct — a name, a type, or both is a valid search (`searchReady`); a type alone browses every card
+of that type, newest first. Trainers and Energy cards have no `types`, so they drop out once a type
+is chosen.
 
 Results are whole card objects, so clicking one needs no second request. Every card seen this
 session — from a set or from a search — lands in the `CARDS` map, which is what `openCard` reads.
@@ -139,65 +171,16 @@ results, a count in the grid legend, and a yellow box in the card sheet naming t
 wording adapts to which fallback was used — don't claim "brand-new sets take a while to sell"
 for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a real price.
 
-### Card scanner
+### Pop-up sheets
 
-**📷 Scan a card** on My collection (and in its empty state) opens `openScanner()`: the camera
-(`getUserMedia`, rear camera preferred) with a yellow card-shaped box, a **Snap** button, **Use a
-photo** (file input — works without camera permission), and Name / Number boxes for fixing a
-misread or typing a card in by hand. Adding still needs signing in (`needSignIn`).
+All modals are centred with `.modal > .sheet{margin:auto}` rather than `align-items:center`, which
+clipped the top of any sheet taller than the screen (like the card sheet) where it couldn't be
+scrolled back to.
 
-**Never test the live camera yourself — the user said they'll test it personally.** Don't open
-the scanner in the Browser pane (it requests the camera). Test the reading and matching by
-feeding canvases or `File`s straight to `readAndLookup()` / `scanFile()`.
+### No camera
 
-**The camera view** (user asked for it "more zoomed out"): the video is `object-fit:contain` and
-`fitStage()` sets the stage's aspect ratio to the camera's own, so the whole picture shows with
-nothing cropped off. The yellow card box is 68% of the stage height for a portrait camera, 84% for
-a landscape one (`frameHeight`). The camera is asked for up to 2560×1920 and, where the phone
-supports it, its minimum zoom. `frameCrop()` maps the box into video pixels — Snap and auto-snap
-both use it. `buildScanner()` is the markup alone and `attachVideo(stream)` wires any stream in, so
-tests can feed a drawn `canvas.captureStream()` instead of the camera.
-
-**Auto-snap** (user asked for it to "automatically snap a photo when it's in a good spot"), on by
-default with a "Snap by itself" switch (`pkAutoSnap`); the Snap button still works. `autoTick`
-runs every 200ms on a 72×100 grey copy of the box plus a 10% margin (`frameGrey`, `frameStats`):
-- **lined up** — a straight edge (a row/column of strong contrast) in the outer 20% band of ≥3 sides,
-  well above the background's texture;
-- **steady** — mean change from the last look ≤ `AUTO_STEADY`;
-- **focused** — `focusScore`: the share of fine detail a small re-blur removes (Crété-Roffet style),
-  on the top half of the card at 240×150. Content-independent: sharp cards 0.65–0.73 from stills,
-  0.60 through a video stream; 1.5px blur 0.52–0.62; 3px ≤ 0.49. Passes at ≥ 0.56, or ≥ 0.45 once
-  the card has held ≥92% of its best focus for 10 looks (real camera compression can pull sharp
-  frames down).
-All three for 5 looks (~1s, a green outline and a filling bar) → snap. Then `autoArmed` is false
-until the box has been empty for 3 looks, so one card isn't scanned repeatedly. While a read is in
-progress (`scanBusy`) it waits. Tested with drawn video streams: sliding card → one snap ~1s after
-it stops; held on → no repeat; removed and a new card → snaps again; 6px blur → never; slightly
-soft → snaps after ~2s; switch off → no snaps. **Not tested on a real camera** — that's the user's.
-
-How a snap becomes a card:
-
-1. `snapCard` crops the video to the yellow box via `frameCrop`.
-   `artSignature` takes a 12×16 colour thumbnail of the art area.
-2. `readCard` runs **Tesseract.js 7.0.0** (loaded lazily from `cdn.jsdelivr.net` on first open —
-   the one outside script on the site, and only for the scanner). Name = tallest real word on the
-   top strip (`nameFromWords`). Number = several passes over the bottom strip and both bottom
-   corners, plain contrast then hard black/white (`inked`, for white outlined text on full arts),
-   stopping once the readings agree.
-3. `numberCandidates` repairs noisy readings ("7199/4165", "1997165", "020/789" with 1→7) and only
-   accepts ones whose total is a real `printedTotal` from `SETS`.
-4. `lookupScan` gathers cards in parallel from: number + set size (top 2 readings), number alone
-   (rescues a misread set size), `*number` + set size (GG13/TG12 prefixes), and name. Ranks by
-   number match + name likeness (`nameSim`) + **picture likeness** (`cardSignature` vs the snap —
-   weighted highest). "Found it" only when the top result is clearly ahead; otherwise it says
-   "closest matches". Nothing is ever added without the user tapping the button.
-
-Measured on simulated phone photos (tilted, blurred, tinted, noisy): 7 of 10 found 1st across
-1999–2024 cards; misses never claimed "Found it". A scan takes ~6–15s, almost all of it the
-free API. Old matches are cleared as soon as a new read starts, so a stale card can't be tapped.
-`.scan` needs `flex-wrap:nowrap` (wrap stretches the result grid rows to ~1500px). All modals are
-centred with `.modal > .sheet{margin:auto}` rather than `align-items:center`, which clipped the top
-of any sheet taller than the screen.
+There was a camera card scanner (Tesseract.js text reading, picture matching, auto-snap); the user
+had it **removed entirely**. Don't add camera, photo-scanning or OCR features back unasked.
 
 ### Accounts
 
@@ -345,6 +328,5 @@ check it in a browser first, because there's no staging step between a push and 
 Prices stay green (`#7ee38a`) and estimates stay gold; those colours carry meaning.
 
 Same as the browser games: **keep it one self-contained HTML file.** No bundler, no
-package.json, no npm dependency. The one outside script is Tesseract.js for the card scanner,
-pinned and loaded only when the scanner opens — don't load it up front, and don't add others. All card art and set logos are hotlinked from
+package.json, no npm dependency. All card art and set logos are hotlinked from
 `images.pokemontcg.io`.
