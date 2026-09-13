@@ -33,7 +33,8 @@ an `EST` tag, and a note in the card sheet explaining exactly where the figure c
 
 **My collection** (under *View more*) — an online way to keep track of your Pokémon. Hit
 *+ Add to collection* on any card search result, or open any card and hit *✓ I have this card*.
-Everything you add collects in one place with its total value, and you can search it. Click a
+Everything you add collects in one place with its total value, and you can search it and sort it —
+newest, price high to low or low to high, name, set, or binder order. Click a
 card in your collection to record which page and pocket it's in in your real binder.
 
 You have to **sign in** to make a collection so it can be saved — pick a name and a password.

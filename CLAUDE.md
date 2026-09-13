@@ -100,7 +100,7 @@ a bare `fetch` will look broken half the time. Without an API key the limit is 1
 | `evoOrder` / `species` | Set card grid order: number order, but each evolution line pulled together at its first card |
 | `showSearch` / `runSearch` / `renderSearch` / `findTile` | Card search: query, paging, result grid |
 | `openCard` / `priceBlock` / `selectVar` | Card sheet: identification block, printing picker, prices |
-| `toggleOwn` / `ownBtn` / `showOwned` / `renderOwned` / `drawOwned` / `ownedTile` | Ticking off cards (from the card sheet), and the collection view |
+| `toggleOwn` / `ownBtn` / `showOwned` / `renderOwned` / `drawOwned` / `sortOwned` / `ownedTile` | Ticking off cards (from the card sheet), and the collection view |
 | `binderBlock` / `setSlot` / `clearSlot` / `binderTo` / `setBinderSize` / `slotLabel` | Binder slot picker in the card sheet, for cards in the collection |
 | `snapOf` / `snapToCard` | The card snapshots that let the collection render without re-fetching |
 | `ripPack` | Booster-pack simulator — 5 commons, 3 uncommons, 1 rare with an 18% chase pull |
@@ -169,6 +169,31 @@ here before?"); tapping one fills the name and focuses the password box. The sig
 the signed-out collection page both say the collection saves on this device; keep that honest —
 never claim it syncs or follows you to other devices.
 
+**Never lose an account in an update.** The user explicitly asked for this. A deploy only replaces
+`index.html`; localStorage survives it — so the danger is only ever *code* that mishandles the data.
+Rules for any change:
+
+- Keep the keys `pkProfiles` and `pkUser` and the profile shape. If the shape must change, convert
+  old profiles when they're **read**; never rename, clear or rewrite them in place.
+- All reads go through `readProfiles()` and all writes through `writeProfiles()`. Don't touch
+  `localStorage` for accounts anywhere else.
+- `writeProfiles` copies the current value to `pkProfilesBackup` before every save.
+  `readProfiles` restores from that backup if `pkProfiles` is missing or unreadable, and stashes an
+  unreadable value in `pkProfilesRescue` first. With no usable backup it returns `ok:false`, and
+  `writeProfiles` then refuses to save rather than overwrite what's there.
+- `writeProfiles` refuses any save that leaves out a name already stored (there's no delete-a-name
+  feature, so that can only be a bug). If you ever add one, change this deliberately.
+- `keepStorage()` calls `navigator.storage.persist()` so the browser doesn't evict the data when
+  space runs low.
+- What code can't protect against, and the user was told: clearing browser/site data, another
+  browser or device, private/incognito windows.
+
+Tested: a name made on the previous live version still signed in and kept its cards and binder
+slot after the update deployed; missing, damaged and no-backup cases; a save dropping a name.
+
+The same origin (`acherchu.github.io`) would also host FOREST RUN if its Pages were enabled; it only
+uses `fr_*` keys and never calls `localStorage.clear()`, so it can't touch these. Keep it that way.
+
 How it hangs together (`initAccounts`, run after `loadSets`):
 
 - `needSignIn(id)` is the gate every change calls first (`toggleOwn`, `setSlot`, `clearSlot`,
@@ -192,7 +217,11 @@ in visitors' browsers — nothing reads them.
 
 Cards go in from a **card search result** (`+ Add to collection` on each `findTile`) or the
 **card sheet** (`ownBtn`, beside the "See the whole set" link), and come out from either of those
-or a collection tile. The collection page leads with the tagline "An online way to keep track of
+or a collection tile. **Sorting** (`#osort`, `sortOwned`, remembered in `pkOwnedSort`): Newest added
+(default), Price high→low, Price low→high, Name A–Z, Set & card number, Binder order, Oldest added.
+"Added" order is `OWNED` key insertion order — card ids aren't integer-like, so object key order holds.
+Price sorts use the value saved with the card (`snap.v`) — what it was worth when added, the same
+number the tile shows — with unpriced cards last in both directions. The collection page leads with the tagline "An online way to keep track of
 your Pokémon" in both its empty and filled states. Its search box (`#oq`, `drawOwned`) filters the
 snapshots in `OWNED` locally — name, set or rarity contains the term, or the number matches
 exactly (`199` or `#199`) — no API call. `ownedTerm` survives `renderOwned` redraws, so removing a

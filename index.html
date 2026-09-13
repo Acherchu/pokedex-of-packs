@@ -1026,6 +1026,12 @@ function ownedTile(s){
 }
 
 let ownedTerm = "";   // what's typed in the collection's search box
+const OWNED_SORTS = [
+  ["new", "Newest added"], ["hi", "Price: high to low"], ["lo", "Price: low to high"],
+  ["az", "Name: A to Z"], ["set", "Set & card number"], ["binder", "Binder order"], ["old", "Oldest added"]
+];
+let ownedSort = store.get("pkOwnedSort", "new");
+if(!OWNED_SORTS.some(o => o[0] === ownedSort)) ownedSort = "new";
 function showOwned(){
   closeCard();
   VIEW = "owned"; setTab();
@@ -1065,11 +1071,35 @@ function renderOwned(){
     +   '</div></div></div>'
     + '<div class="tools">'
     +   '<input type="search" id="oq" placeholder="Search your collection…" value="' + esc(ownedTerm) + '">'
+    +   '<select id="osort" aria-label="Sort your collection" onchange="ownedSort=this.value;store.set(\'pkOwnedSort\',ownedSort);drawOwned()">'
+    +     OWNED_SORTS.map(o => '<option value="' + o[0] + '"' + (o[0] === ownedSort ? " selected" : "") + '>' + o[1] + '</option>').join("")
+    +   '</select>'
     +   '<span class="count" id="oshown"></span>'
     + '</div>'
     + '<div class="found" id="ogrid" style="margin-top:18px"></div>';
   document.getElementById("oq").addEventListener("input", e => { ownedTerm = e.target.value; drawOwned(); });
   drawOwned();
+}
+/* "Added" order is the order cards went into OWNED (card ids aren't numbers, so object key order is
+   insertion order). Prices are the value saved with the card when it was added. Cards with no
+   price go last whichever way you sort by price. */
+function sortOwned(list){
+  const pos = {};
+  Object.keys(OWNED).forEach((k, i) => pos[k] = i);
+  const newest = (a, b) => pos[b.id] - pos[a.id];
+  const noPrice = (a, b) => (a.v == null) - (b.v == null);
+  const num = x => { const n = parseInt(x, 10); return isNaN(n) ? Infinity : n; };
+  const c = list.slice();
+  const by = {
+    new: newest,
+    old: (a, b) => pos[a.id] - pos[b.id],
+    hi: (a, b) => noPrice(a, b) || b.v - a.v || newest(a, b),
+    lo: (a, b) => noPrice(a, b) || a.v - b.v || newest(a, b),
+    az: (a, b) => (a.n || "").localeCompare(b.n || "") || (a.set || "").localeCompare(b.set || ""),
+    set: (a, b) => (a.set || "").localeCompare(b.set || "") || num(a.num) - num(b.num) || String(a.num).localeCompare(String(b.num)),
+    binder: (a, b) => (!a.slot) - (!b.slot) || (a.slot && b.slot ? a.slot.p - b.slot.p || a.slot.s - b.slot.s : 0) || newest(a, b)
+  };
+  return c.sort(by[ownedSort] || newest);
 }
 // matches a card's name, set or rarity, or its exact number ("199" or "#199")
 function drawOwned(){
@@ -1080,7 +1110,7 @@ function drawOwned(){
     || (s.n || "").toLowerCase().includes(term) || (s.set || "").toLowerCase().includes(term)
     || (s.rar || "").toLowerCase().includes(term) || String(s.num).toLowerCase() === num);
   document.getElementById("oshown").textContent = term ? hits.length + " / " + list.length + " cards" : "";
-  document.getElementById("ogrid").innerHTML = hits.map(ownedTile).join("")
+  document.getElementById("ogrid").innerHTML = sortOwned(hits).map(ownedTile).join("")
     || '<div class="msg" style="grid-column:1/-1">Nothing in your collection matches “' + esc(ownedTerm.trim()) + '”.</div>';
 }
 
@@ -1098,16 +1128,70 @@ let USER = null;                 // {key, name} of whoever is signed in
 let pendingOwn = "";             // a card someone tried to add before signing in; added once they do
 const NAME_MAX = 24, PW_MIN = 4, PW_ITER = 150000;
 
-function profiles(){ return store.get("pkProfiles", {}); }
+/* Accounts are the one thing on this site that can't be fetched again, so they're handled carefully.
+   A site update only replaces index.html — it never touches localStorage — so the rule for any
+   future change is: keep the key names pkProfiles / pkUser and the profile shape above, and if the
+   shape ever has to change, convert old profiles when they're read. Never rename, clear or reformat
+   them in place. On top of that:
+   - pkProfilesBackup is the previous good copy, written just before every save. If pkProfiles is
+     ever missing or unreadable, it comes back from the backup.
+   - If pkProfiles can't be read, nothing writes over it: a copy goes to pkProfilesRescue and saving
+     is refused until it can be read again.
+   - A save that would leave out a name that already exists is refused — the site has no way to
+     delete a name, so that can only be a bug.
+   - navigator.storage.persist() asks the browser not to clear the site's storage to free up space. */
+function parseProfiles(raw){
+  try{ const o = JSON.parse(raw); return o && typeof o === "object" && !Array.isArray(o) ? o : null; }
+  catch(e){ return null; }
+}
+function readProfiles(){
+  let raw, backup;
+  try{ raw = localStorage.getItem("pkProfiles"); backup = localStorage.getItem("pkProfilesBackup"); }
+  catch(e){ return {ok: false, data: {}}; }                     // storage blocked
+  const restore = () => {
+    const b = backup != null ? parseProfiles(backup) : null;
+    if(!b) return null;
+    try{ localStorage.setItem("pkProfiles", backup); }catch(e){}
+    return b;
+  };
+  if(raw == null){
+    const b = restore();
+    return {ok: true, data: b || {}};
+  }
+  const o = parseProfiles(raw);
+  if(o) return {ok: true, data: o};
+  try{ if(localStorage.getItem("pkProfilesRescue") == null) localStorage.setItem("pkProfilesRescue", raw); }catch(e){}
+  const b = restore();
+  return b ? {ok: true, data: b} : {ok: false, data: {}};
+}
+function profiles(){ return readProfiles().data; }
 function writeProfiles(all){
-  try{ localStorage.setItem("pkProfiles", JSON.stringify(all)); return true; }
-  catch(e){ toast("Couldn't save — this browser's storage is full or turned off."); return false; }
+  const cur = readProfiles();
+  if(!cur.ok){
+    toast("Your saved names couldn't be read, so nothing was saved — and nothing was deleted.");
+    return false;
+  }
+  for(const k in cur.data){
+    if(!(k in all)){ toast("Didn't save: that would have lost the name " + (cur.data[k].name || k) + "."); return false; }
+  }
+  try{
+    const prev = localStorage.getItem("pkProfiles");
+    if(prev != null) localStorage.setItem("pkProfilesBackup", prev);
+    localStorage.setItem("pkProfiles", JSON.stringify(all));
+    return true;
+  }catch(e){
+    toast("Couldn't save — this browser's storage is full or turned off.");
+    return false;
+  }
+}
+function keepStorage(){
+  try{ if(navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {}); }catch(e){}
 }
 
 function initAccounts(){
   const key = store.get("pkUser", "");
   const p = key && profiles()[key];
-  if(p) useProfile(key, p);
+  if(p){ useProfile(key, p); keepStorage(); }
   drawAccount(); refreshView();
 }
 function useProfile(key, p){
@@ -1265,6 +1349,7 @@ async function signIn(ev){
   if(old){ localStorage.removeItem("pkOwned"); localStorage.removeItem("pkBinder"); }
   store.set("pkUser", key);
   useProfile(key, all[key]);
+  keepStorage();
 
   closeSignIn(false);
   drawAccount(); refreshView(); redrawSheet();
