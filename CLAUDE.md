@@ -315,8 +315,9 @@ sheet's **"How many do you have?"** block (`qtyBlock`, `#qtypane`, above Your co
 + ; `setQty` stores `OWNED[id].qty` (clamped 1–999, whole numbers; **missing = 1**, so every older
 save is one copy, and qty is deleted at 1). − stops at 1 — removing the card stays the "In your
 collection" button, so a slip can't delete it. All copies share the card's picked printing. Worth =
-`v × qty` everywhere: the collection total, the tile's "3 copies · $1.05" line, the price sorts, and
-"n × $0.35 = $1.05" in the sheet. The stats add "Copies, counting doubles" when any card has more
+`v × qty` in the collection total, the tile's "3 copies · $1.05" line, and "n × $0.35 = $1.05" in
+the sheet. **The price sorts use one card's price, not × qty** — the user asked that having multiples
+doesn't move a card's place when sorting high→low or low→high. The stats add "Copies, counting doubles" when any card has more
 than one. The green owned badge on every tile (`ownMark`) shows "×3" instead of ✓. Tested with real
 clicks and typing, invalid values (0, 5000, 3.6), and a reload.
 

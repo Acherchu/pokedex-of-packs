@@ -1527,8 +1527,9 @@ function sortOwned(list){
   const by = {
     new: newest,
     old: (a, b) => pos[a.id] - pos[b.id],
-    hi: (a, b) => noPrice(a, b) || b.v * qtyOf(b) - a.v * qtyOf(a) || newest(a, b),
-    lo: (a, b) => noPrice(a, b) || a.v * qtyOf(a) - b.v * qtyOf(b) || newest(a, b),
+    // by one card's price — how many you have doesn't move a card up or down
+    hi: (a, b) => noPrice(a, b) || b.v - a.v || newest(a, b),
+    lo: (a, b) => noPrice(a, b) || a.v - b.v || newest(a, b),
     az: (a, b) => (a.n || "").localeCompare(b.n || "") || (a.set || "").localeCompare(b.set || ""),
     set: (a, b) => (a.set || "").localeCompare(b.set || "") || num(a.num) - num(b.num) || String(a.num).localeCompare(String(b.num)),
     binder: (a, b) => (!slotNumber(a.slot)) - (!slotNumber(b.slot)) || (slotNumber(a.slot) || 0) - (slotNumber(b.slot) || 0) || newest(a, b)
