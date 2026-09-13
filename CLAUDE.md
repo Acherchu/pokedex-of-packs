@@ -107,6 +107,21 @@ don't "simplify" them away:
 - `Art Bundle`, `Blister`, `Sleeved`, `Mini`, `Case` and `Display` products are excluded; they
   aren't the plain pack a person buys.
 
+**Cheapest pack you can actually buy.** The user asked for the price of one single pack, "currently
+in stock", from "trusted websites and not a scam". The script's `in_stock()` also stores, for the
+plain single booster pack (same `candidates()` filter as the market price — no bundles, sleeved
+packs, code cards): `l`/`lu` = the lowest in-stock TCGplayer listing and its product id, `d`/`du` =
+the lowest TCGplayer Direct listing (vetted sellers TCGplayer ships for). **Direct had no sealed
+packs at all** when checked (0 of 115 sets), so in practice it's `l`. `p` stays the recent average
+sale. In the page, `packInfo()` shows the in-stock price as the set's pack price (tiles say
+"cheapest in stock on TCGplayer"; the set header has a buy box with **Buy on TCGplayer ↗** →
+`https://www.tcgplayer.com/product/<lu>`), and the "Priciest pack" sort uses it. **Scam guard:** a
+listing under `PACK_SUS` (0.5) × the average sale is never shown as the price — it's flagged ("far too
+cheap for a real sealed pack") and the average is shown instead (hit: Chaos Rising $0.10 vs $5.87,
+two others). Under 0.75× gets a "check the seller's rating" note. In stock means **as of the last
+script run** (`PACK_PRICES.d`), and the page says that date — it is not live (tcgcsv has no CORS).
+TCGplayer is the only store with free data here; Pokémon Center, Target etc. have no free price feed.
+
 114 of 174 sets end up with a pack price. The rest show "not sold in packs", which is accurate —
 promos, Trainer Galleries, Shiny Vaults and Energies were never sold that way.
 

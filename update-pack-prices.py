@@ -69,26 +69,47 @@ EXCLUDE = ("code card", "art bundle", "blister", "sleeved", "mini", "case", "dis
 QUALIFIER = re.compile(r"\s*\[[^\]]*\]\s*$")     # "Booster Pack [Unlimited Edition]"
 
 
-def pick(products, prices, suffix):
-    """Cheapest market price among products that are exactly `suffix` (e.g. 'booster pack').
+def candidates(products, suffix):
+    """Products that are exactly `suffix` (e.g. 'booster pack') — one plain item, not a bundle.
 
     Vintage packs carry an edition qualifier — Base Set's is "Booster Pack [Revised Unlimited
-    Edition]" — so the trailing bracket is stripped before matching, and the cheapest edition
-    wins (unlimited over 1st edition), matching how card prices are picked.
+    Edition]" — so the trailing bracket is stripped before matching.
     """
-    best = None
+    out = []
     for p in products:
         n = p["name"].lower()
         if any(x in n for x in EXCLUDE):
             continue
         while QUALIFIER.search(n):
             n = QUALIFIER.sub("", n)
-        if not n.endswith(suffix):
-            continue
-        m = prices.get(p["productId"])
-        if m and (best is None or m < best):
-            best = m
-    return best
+        if n.endswith(suffix):
+            out.append(p)
+    return out
+
+
+def pick(products, prices, suffix):
+    """Cheapest market price among the matching products; the cheapest edition wins (unlimited
+    over 1st edition), matching how card prices are picked."""
+    vals = [prices[p["productId"]] for p in candidates(products, suffix) if prices.get(p["productId"])]
+    return min(vals) if vals else None
+
+
+def in_stock(products, rows, suffix):
+    """The cheapest single item you can buy right now on TCGplayer.
+
+    lowPrice is the lowest listing currently in stock from any TCGplayer seller (every order is
+    covered by TCGplayer's guarantee); directLowPrice is the lowest from TCGplayer Direct sellers,
+    which TCGplayer vets and ships itself. Either is None when nothing is listed.
+    -> {"l": price, "lu": productId, "d": price, "du": productId} (only the keys that exist)
+    """
+    out = {}
+    for p in candidates(products, suffix):
+        for r in rows.get(p["productId"], []):
+            for key, field in (("l", "lowPrice"), ("d", "directLowPrice")):
+                v = r.get(field)
+                if v and v > 0 and (key not in out or v < out[key]):
+                    out[key], out[key + "u"] = round(v, 2), p["productId"]
+    return out
 
 
 SAMPLE_SETS = 15        # how many recent priced sets feed the rarity baselines
@@ -195,8 +216,9 @@ def main():
             print(f"  ! {g['name']}: {e}")
             return set_id, None
         # sealed vintage often has no marketPrice, only a lowPrice from live listings
-        prices = {}
+        prices, rows = {}, {}
         for p in raw:
+            rows.setdefault(p["productId"], []).append(p)
             m = p.get("marketPrice") or p.get("lowPrice")
             if m:
                 prices[p["productId"]] = min(m, prices.get(p["productId"], m))
@@ -205,6 +227,8 @@ def main():
             v = pick(products, prices, suffix)
             if v:
                 out[key] = round(v, 2)
+        # one single pack, in stock right now: l/lu = cheapest listing, d/du = cheapest TCGplayer Direct
+        out.update(in_stock(products, rows, "booster pack"))
         return set_id, (out or None)
 
     print("fetching sealed prices…")
@@ -217,7 +241,10 @@ def main():
                 print(f"  {i}/{len(matched)}")
 
     packs = sum(1 for v in result.values() if "p" in v)
+    stocked = sum(1 for v in result.values() if "l" in v)
+    direct = sum(1 for v in result.values() if "d" in v)
     print(f"done: {packs} sets with a booster-pack price, {len(result)} with any sealed price")
+    print(f"      {stocked} with a single pack in stock on TCGplayer, {direct} from TCGplayer Direct")
 
     print("building rarity baselines for cards with no price…")
     est = rarity_baselines(sets)
