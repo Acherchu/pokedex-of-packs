@@ -35,7 +35,8 @@ an `EST` tag, and a note in the card sheet explaining exactly where the figure c
 *+ Add to collection* on any card search result, or open any card and hit *✓ I have this card*.
 Everything you add collects in one place with its total value, and you can search it and sort it —
 newest, price high to low or low to high, name, set, or binder order. Click a
-card in your collection to record which page and pocket it's in in your real binder.
+card in your collection and tap **+** to give it a binder slot number, so you know where it is in
+your real binder.
 
 **Scan a card** — point your camera at a card (or pick a photo of it) and the site reads its name
 and number, finds that exact card, and lets you add it with one tap. You can fix what it read if it

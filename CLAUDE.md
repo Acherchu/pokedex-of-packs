@@ -101,7 +101,7 @@ a bare `fetch` will look broken half the time. Without an API key the limit is 1
 | `showSearch` / `runSearch` / `renderSearch` / `findTile` | Card search: query, paging, result grid |
 | `openCard` / `priceBlock` / `selectVar` | Card sheet: identification block, printing picker, prices |
 | `toggleOwn` / `ownBtn` / `showOwned` / `renderOwned` / `drawOwned` / `sortOwned` / `ownedTile` | Ticking off cards (from the card sheet), and the collection view |
-| `binderBlock` / `setSlot` / `clearSlot` / `binderTo` / `setBinderSize` / `slotLabel` | Binder slot picker in the card sheet, for cards in the collection |
+| `binderBlock` / `editSlot` / `saveSlot` / `clearSlot` / `slotNumber` | Binder slot (one number, set with a + button) in the card sheet, for cards in the collection |
 | `snapOf` / `snapToCard` | The card snapshots that let the collection render without re-fetching |
 | `ripPack` | Booster-pack simulator — 5 commons, 3 uncommons, 1 rare with an 18% chase pull |
 
@@ -150,9 +150,34 @@ misread or typing a card in by hand. Adding still needs signing in (`needSignIn`
 the scanner in the Browser pane (it requests the camera). Test the reading and matching by
 feeding canvases or `File`s straight to `readAndLookup()` / `scanFile()`.
 
+**The camera view** (user asked for it "more zoomed out"): the video is `object-fit:contain` and
+`fitStage()` sets the stage's aspect ratio to the camera's own, so the whole picture shows with
+nothing cropped off. The yellow card box is 68% of the stage height for a portrait camera, 84% for
+a landscape one (`frameHeight`). The camera is asked for up to 2560×1920 and, where the phone
+supports it, its minimum zoom. `frameCrop()` maps the box into video pixels — Snap and auto-snap
+both use it. `buildScanner()` is the markup alone and `attachVideo(stream)` wires any stream in, so
+tests can feed a drawn `canvas.captureStream()` instead of the camera.
+
+**Auto-snap** (user asked for it to "automatically snap a photo when it's in a good spot"), on by
+default with a "Snap by itself" switch (`pkAutoSnap`); the Snap button still works. `autoTick`
+runs every 200ms on a 72×100 grey copy of the box plus a 10% margin (`frameGrey`, `frameStats`):
+- **lined up** — a straight edge (a row/column of strong contrast) in the outer 20% band of ≥3 sides,
+  well above the background's texture;
+- **steady** — mean change from the last look ≤ `AUTO_STEADY`;
+- **focused** — `focusScore`: the share of fine detail a small re-blur removes (Crété-Roffet style),
+  on the top half of the card at 240×150. Content-independent: sharp cards 0.65–0.73 from stills,
+  0.60 through a video stream; 1.5px blur 0.52–0.62; 3px ≤ 0.49. Passes at ≥ 0.56, or ≥ 0.45 once
+  the card has held ≥92% of its best focus for 10 looks (real camera compression can pull sharp
+  frames down).
+All three for 5 looks (~1s, a green outline and a filling bar) → snap. Then `autoArmed` is false
+until the box has been empty for 3 looks, so one card isn't scanned repeatedly. While a read is in
+progress (`scanBusy`) it waits. Tested with drawn video streams: sliding card → one snap ~1s after
+it stops; held on → no repeat; removed and a new card → snaps again; 6px blur → never; slightly
+soft → snaps after ~2s; switch off → no snaps. **Not tested on a real camera** — that's the user's.
+
 How a snap becomes a card:
 
-1. `snapCard` crops the video to the yellow box (mapping it back through `object-fit:cover`).
+1. `snapCard` crops the video to the yellow box via `frameCrop`.
    `artSignature` takes a 12×16 colour thumbnail of the art area.
 2. `readCard` runs **Tesseract.js 7.0.0** (loaded lazily from `cdn.jsdelivr.net` on first open —
    the one outside script on the site, and only for the scanner). Name = tallest real word on the
@@ -185,7 +210,8 @@ Firebase (Google sign-in + Firestore) version on purpose: setting up Firebase ne
 Google account, which the owner doesn't have. Don't reintroduce Firebase or any login provider
 unless the user asks for it again. All of it is localStorage on one device:
 
-- `pkProfiles` = `{<lowercased name>: {name, owned: {cardId: snapshot}, binder: 4|9|12, pw: {salt, hash, it}}}`
+- `pkProfiles` = `{<lowercased name>: {name, owned: {cardId: snapshot incl. slot number}, pw: {salt, hash, it}}}`
+  (older profiles may also carry `binder: 4|9|12` and `{p, s}` slots — converted on read, see Binder slots)
 - `pkUser` = the lowercased name currently signed in (so a reload keeps you signed in)
 
 Names are matched case-insensitively and trimmed ("  aSH " signs in as Ash), max 24 characters.
@@ -264,14 +290,21 @@ card mid-search keeps the filter; `showOwned` resets it. `showOwned` closes
 the sheet and switches view; `refreshView` calls `renderOwned` instead, so un-ticking from an open
 sheet redraws the collection behind it without closing the sheet.
 
-**Binder slots.** A card in the collection can be given a place in the owner's real binder:
-`OWNED[id].slot = {p: page, s: pocket}`, pockets counted left to right, top to bottom. The card
-sheet shows a "Binder slot" block (`binderBlock`, `#binderpane`) only for collected cards: a
-picture of one binder page, page ‹ › and a page-number box, a 4 / 9 / 12-pocket layout select
-(saved to the account as `binder`, default 9), and "Remove from slot". Pockets holding another card show
-that card and aren't clickable — **one card per pocket**, never silently overwrite. The sheet opens
-on the card's own page. Collection tiles show "Binder: Page N · Slot N". Removing a card from the
-collection drops its slot with it.
+**Binder slots.** A card in the collection can be given a place in the owner's real binder as **one
+number**: `OWNED[id].slot = 12`. The user asked for it to be simple — "press a + and put in a
+number" — replacing an earlier page/pocket grid picker; don't bring the grid back unasked. The card
+sheet's "Binder slot" block (`binderBlock`, `#binderpane`, collected cards only) is: a round **+**
+when empty → a number box with Save / Cancel (Enter saves, Escape closes just the box) → **#12**
+with Change / Remove. Whole numbers ≥ 1 only. **One card per number**: a taken number shows "Slot 12
+already has Charizard ex (151)" and doesn't save — never silently overwrite. Collection tiles show
+"Binder slot 12"; the "Binder order" sort goes by the number, unslotted last. Removing a card from
+the collection drops its slot with it.
+
+Old saves have `slot: {p, s}` plus a profile-level `binder` (4/9/12 pockets a page). `slotNumber()`
+converts those to `(p−1)·perPage + s` when a profile is read (`useProfile`) and when a pre-sign-in
+collection is merged — the position is kept, never dropped. The old `binder` field is left in
+stored profiles untouched (harmless; `saveCollection` merges with `Object.assign`). Tested: page 2
+pocket 3 on 12-pocket pages → slot 15, and slot 1 stayed 1, after reload.
 
 Every stored entry keeps a **snapshot** of the card (`snapOf`): name, set, number, rarity, both
 image URLs, and its value at save time. That's the point — the collection renders completely

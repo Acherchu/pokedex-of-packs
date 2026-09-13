@@ -149,37 +149,23 @@
   .tagline{color:var(--gold);font-weight:600;font-size:15px;margin:-2px 0 12px}
   .find .fslot{color:var(--gold);font-size:11.5px;font-weight:600;margin-top:3px}
 
-  /* ---------- binder slot picker (card sheet) ---------- */
+  /* ---------- binder slot (card sheet) ---------- */
   .binder{margin-bottom:6px}
-  .binder .bstat{font-size:13px;color:var(--dim);margin-bottom:9px}
-  .binder .bstat b{color:var(--gold)}
-  .binder .bctl{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:var(--dim)}
-  .binder .bctl input[type=number]{
-    width:64px;background:var(--panel);border:1px solid var(--line);color:var(--text);
-    border-radius:8px;padding:5px 7px;font:inherit;font-size:13px;
+  .slotrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .slotadd{
+    width:42px;height:42px;border-radius:50%;border:2px dashed var(--gold);background:rgba(255,203,5,.08);
+    color:var(--gold);font:inherit;font-size:26px;font-weight:700;line-height:1;cursor:pointer;padding:0;
   }
-  .binder .bctl select{padding:5px 8px;font-size:13px}
-  .binder .bnav{
-    background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;
-    width:30px;height:30px;cursor:pointer;font:inherit;font-size:16px;line-height:1;
+  .slotadd:hover{background:rgba(255,203,5,.2)}
+  .slothint{color:var(--dim);font-size:13px}
+  .slotnum{font-size:24px;font-weight:800;color:var(--gold);margin-right:4px}
+  .slotrow input{
+    width:110px;background:var(--panel);border:1px solid var(--gold);color:var(--text);border-radius:9px;
+    padding:8px 10px;font:inherit;font-size:15px;outline:none;
   }
-  .binder .bnav:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
-  .binder .bnav:disabled{opacity:.4;cursor:default}
-  .pockets{display:grid;gap:6px;max-width:300px;padding:8px;background:var(--navy);border:1px solid var(--line);border-radius:10px}
-  .pocket{
-    aspect-ratio:245/342;border-radius:6px;border:1px dashed var(--line);background:rgba(255,255,255,.03);
-    color:var(--dim);font:inherit;font-size:13px;font-weight:700;padding:0;position:relative;overflow:hidden;
-    display:flex;align-items:center;justify-content:center;
-  }
-  button.pocket{cursor:pointer}
-  button.pocket:hover{border:1px solid var(--gold);color:var(--gold)}
-  .pocket img{width:100%;height:100%;object-fit:cover;display:block}
-  .pocket.taken{border-style:solid;opacity:.5;cursor:not-allowed}
-  .pocket.here{border:2px solid var(--gold);box-shadow:0 0 0 3px rgba(255,203,5,.25)}
-  .pocket.here span{
-    position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);
-    font-size:10px;font-weight:800;border-radius:4px;padding:0 5px;
-  }
+  .slotrow .back,.slotrow .btn-gold{padding:7px 13px;font-size:13px}
+  .sloterr{color:#ffb4b4;font-size:13px;font-weight:600;margin-top:7px}
+  .sloterr:empty{display:none}
   .ownmark{
     position:absolute;top:6px;right:6px;background:rgba(126,227,138,.92);color:#0c2412;
     font-weight:900;font-size:11px;border-radius:50%;width:19px;height:19px;line-height:19px;text-align:center;
@@ -288,18 +274,25 @@
   .scan h2{margin:0;font-size:22px}
   .scan .scansub{color:var(--dim);font-size:13px;margin-top:-6px}
   .scanstage{
-    position:relative;width:100%;aspect-ratio:3/4;max-height:58vh;background:#000;border-radius:12px;overflow:hidden;
+    position:relative;width:100%;aspect-ratio:3/4;max-height:60vh;background:#000;border-radius:12px;overflow:hidden;
     margin:0 auto;
   }
-  .scanstage video,.scanstage canvas{width:100%;height:100%;object-fit:cover;display:block}
+  /* contain, not cover: the whole camera view shows, nothing cropped off the sides */
+  .scanstage video{width:100%;height:100%;object-fit:contain;display:block}
   .scanframe{
-    position:absolute;left:50%;top:50%;height:84%;aspect-ratio:63/88;transform:translate(-50%,-50%);
-    border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 0 999px rgba(4,12,32,.55);pointer-events:none;
+    position:absolute;left:50%;top:50%;height:var(--fh,70%);aspect-ratio:63/88;transform:translate(-50%,-50%);
+    border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 0 999px rgba(4,12,32,.45);pointer-events:none;
+    transition:border-color .15s;
   }
+  .scanframe.ready{border-color:#7ee38a}
   .scanframe span{
-    position:absolute;left:50%;top:-30px;transform:translateX(-50%);white-space:nowrap;font-size:12.5px;font-weight:700;
+    position:absolute;left:50%;top:-28px;transform:translateX(-50%);white-space:nowrap;font-size:12.5px;font-weight:700;
     color:var(--gold);text-shadow:0 1px 3px #000;
   }
+  .scanframe.ready span{color:#7ee38a}
+  .scanframe i{position:absolute;left:0;bottom:0;height:6px;width:0;background:#7ee38a;border-radius:0 3px 0 10px;transition:width .2s linear}
+  .scanbtns .autotog{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim);cursor:pointer;user-select:none}
+  .scanbtns .autotog input{accent-color:var(--gold);width:16px;height:16px}
   .scanstage .camerr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
     padding:24px;color:var(--dim);font-size:14px;line-height:1.5}
   .scanbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -525,58 +518,69 @@ function ownBtn(id){
 }
 
 /* --- binder slots ---
-   Where a card sits in your real binder: a page and a pocket, kept on its OWNED entry as
-   slot:{p, s}. Pockets count left to right, top to bottom. One card per pocket — pockets that
-   already hold a card show it and can't be picked. Taking a card out of the collection drops its
-   slot with it. */
-let BINDER = 9;                             // pockets per page: 4, 9 or 12 (saved with the collection)
-let binderPage = 1;                         // the page the card sheet's picker is showing
-const BINDER_COLS = {4:2, 9:3, 12:4};
-function slotLabel(sl){ return sl ? "Page " + sl.p + " · Slot " + sl.s : ""; }
+   Where a card sits in your real binder: one number, kept on its OWNED entry as slot (1, 2, 3…).
+   In the card sheet an empty slot is a "+" button; tap it, type the number, Save. One card per
+   number — a number that's already taken says which card has it and doesn't save. Taking a card
+   out of the collection drops its slot with it.
+   Older saves stored slot as {p: page, s: pocket} with 4, 9 or 12 pockets a page (profile.binder).
+   Those are converted to the same position number when a profile is read (slotNumber) — never
+   thrown away. */
+let slotEditing = false;                    // is the card sheet's slot box open for typing
+function slotNumber(sl, perPage){
+  if(typeof sl === "number") return sl >= 1 ? Math.floor(sl) : null;
+  if(sl && sl.p >= 1 && sl.s >= 1) return (sl.p - 1) * ([4, 9, 12].indexOf(perPage) >= 0 ? perPage : 9) + sl.s;
+  return null;
+}
 function binderBlock(id){
   const e = OWNED[id];
   if(!e) return '<div id="binderpane"></div>';   // not in the collection — nothing to place
-  const here = e.slot, taken = {};
-  for(const k in OWNED){
-    const o = OWNED[k];
-    if(k !== id && o.slot && o.slot.p === binderPage) taken[o.slot.s] = o;
+  const n = slotNumber(e.slot), q = "'" + id + "'";
+  let row;
+  if(slotEditing){
+    row = '<input id="slotin" type="number" min="1" step="1" inputmode="numeric" placeholder="Slot number" value="' + (n || "") + '"'
+      + ' onkeydown="if(event.key===&quot;Enter&quot;)saveSlot(' + q + ');if(event.key===&quot;Escape&quot;){event.stopPropagation();editSlot(' + q + ',false)}">'
+      + '<button class="btn-gold" onclick="saveSlot(' + q + ')">Save</button>'
+      + '<button class="back" onclick="editSlot(' + q + ',false)">Cancel</button>';
+  }else if(n){
+    row = '<span class="slotnum">#' + n + '</span>'
+      + '<button class="back" onclick="editSlot(' + q + ',true)">Change</button>'
+      + '<button class="back" onclick="clearSlot(' + q + ')">Remove</button>';
+  }else{
+    row = '<button class="slotadd" onclick="editSlot(' + q + ',true)" title="Put it in a binder slot" aria-label="Put it in a binder slot">+</button>'
+      + '<span class="slothint">Put it in a binder slot</span>';
   }
-  let cells = "";
-  for(let i = 1; i <= BINDER; i++){
-    const mine = here && here.p === binderPage && here.s === i;
-    if(taken[i]){
-      cells += '<div class="pocket taken" title="' + esc(taken[i].n) + ' is in this pocket">'
-        + '<img src="' + taken[i].img + '" alt="' + esc(taken[i].n) + '"></div>';
-    }else{
-      cells += '<button class="pocket' + (mine ? " here" : "") + '" title="' + (mine ? "This card's pocket" : "Put it in slot " + i) + '"'
-        + ' onclick="setSlot(\'' + id + '\',' + i + ')">'
-        + (mine ? '<img src="' + e.img + '" alt=""><span>Here</span>' : i) + '</button>';
-    }
-  }
-  return '<div class="blk binder" id="binderpane"><h4>Binder slot</h4>'
-    + '<div class="bstat">' + (here
-        ? 'In your binder at <b>' + slotLabel(here) + '</b>'
-        : 'Not in your binder yet — pick an empty pocket.') + '</div>'
-    + '<div class="bctl">'
-    +   '<button class="bnav" onclick="binderTo(\'' + id + '\',' + (binderPage - 1) + ')"' + (binderPage <= 1 ? " disabled" : "") + ' title="Previous page">‹</button>'
-    +   'Page <input type="number" min="1" value="' + binderPage + '" onchange="binderTo(\'' + id + '\',this.value)">'
-    +   '<button class="bnav" onclick="binderTo(\'' + id + '\',' + (binderPage + 1) + ')" title="Next page">›</button>'
-    +   '<select title="Pockets per binder page" onchange="setBinderSize(\'' + id + '\',this.value)">'
-    +     [4, 9, 12].map(n => '<option value="' + n + '"' + (n === BINDER ? " selected" : "") + '>' + n + '-pocket pages</option>').join("")
-    +   '</select>'
-    +   (here ? '<button class="back" style="padding:5px 10px;font-size:13px" onclick="clearSlot(\'' + id + '\')">Remove from slot</button>' : '')
-    + '</div>'
-    + '<div class="pockets" style="grid-template-columns:repeat(' + (BINDER_COLS[BINDER] || 3) + ',1fr)">' + cells + '</div>'
-    + '</div>';
+  return '<div class="blk binder" id="binderpane"><h4>Binder slot</h4><div class="slotrow">' + row + '</div>'
+    + '<div class="sloterr" id="sloterr"></div></div>';
 }
 function redrawBinder(id){
   const el = document.getElementById("binderpane");
   if(el) el.outerHTML = binderBlock(id);
 }
-function setSlot(id, n){
+function editSlot(id, on){
+  slotEditing = on;
+  redrawBinder(id);
+  const inp = document.getElementById("slotin");
+  if(inp){ inp.focus(); inp.select(); }
+}
+function saveSlot(id){
   const e = OWNED[id]; if(!e) return;
   if(needSignIn()) return;
-  e.slot = {p: binderPage, s: n};
+  const inp = document.getElementById("slotin"), err = document.getElementById("sloterr");
+  const n = Number(inp && inp.value);
+  if(!Number.isInteger(n) || n < 1 || n > 99999){
+    if(err) err.textContent = "Type a slot number, like 12.";
+    if(inp) inp.focus();
+    return;
+  }
+  for(const k in OWNED){
+    if(k !== id && slotNumber(OWNED[k].slot) === n){
+      if(err) err.textContent = "Slot " + n + " already has " + OWNED[k].n + " (" + OWNED[k].set + ").";
+      if(inp){ inp.focus(); inp.select(); }
+      return;
+    }
+  }
+  e.slot = n;
+  slotEditing = false;
   saveCollection();
   redrawBinder(id);
   refreshView();                            // the collection tile shows the slot too
@@ -585,19 +589,10 @@ function clearSlot(id){
   const e = OWNED[id]; if(!e) return;
   if(needSignIn()) return;
   delete e.slot;
+  slotEditing = false;
   saveCollection();
   redrawBinder(id);
   refreshView();
-}
-function binderTo(id, page){
-  binderPage = Math.max(1, parseInt(page, 10) || 1);
-  redrawBinder(id);
-}
-function setBinderSize(id, n){
-  if(needSignIn()) return;
-  BINDER = BINDER_COLS[+n] ? +n : 9;
-  saveCollection();
-  redrawBinder(id);
 }
 
 // a saved snapshot is enough to re-open the card sheet after a reload
@@ -1056,7 +1051,7 @@ function ownedTile(s){
     + (have ? '<div class="ownmark">✓</div>' : '')
     + '<div class="fnm">' + esc(s.n) + '</div>'
     + '<div class="fset"><span>' + esc(s.set) + ' · #' + esc(s.num) + '</span></div>'
-    + (s.slot ? '<div class="fslot">Binder: ' + slotLabel(s.slot) + '</div>' : '')
+    + (slotNumber(s.slot) ? '<div class="fslot">Binder slot ' + slotNumber(s.slot) + '</div>' : '')
     + '<div class="frow"><span class="rr">' + esc(s.rar || "—") + '</span>'
     +   '<span class="pp' + (s.est ? " est" : "") + '">' + (s.v != null ? (s.est ? "~" : "") + money(s.v) : "—") + '</span></div>'
     + '<div class="addbar"><button class="own ' + (have ? "yes" : "") + '"'
@@ -1137,7 +1132,7 @@ function sortOwned(list){
     lo: (a, b) => noPrice(a, b) || a.v - b.v || newest(a, b),
     az: (a, b) => (a.n || "").localeCompare(b.n || "") || (a.set || "").localeCompare(b.set || ""),
     set: (a, b) => (a.set || "").localeCompare(b.set || "") || num(a.num) - num(b.num) || String(a.num).localeCompare(String(b.num)),
-    binder: (a, b) => (!a.slot) - (!b.slot) || (a.slot && b.slot ? a.slot.p - b.slot.p || a.slot.s - b.slot.s : 0) || newest(a, b)
+    binder: (a, b) => (!slotNumber(a.slot)) - (!slotNumber(b.slot)) || (slotNumber(a.slot) || 0) - (slotNumber(b.slot) || 0) || newest(a, b)
   };
   return c.sort(by[ownedSort] || newest);
 }
@@ -1170,16 +1165,24 @@ let scanHits = [], scanRead = {name: "", num: "", total: ""};
 function openScanner(){
   if(needSignIn()) return;                   // adding needs somewhere to save it
   if(document.getElementById("scanner")) return;
+  buildScanner();
+  startCamera();
+  getOcr().catch(() => {});                  // warm the reader up while the camera starts
+}
+/* The scanner's markup on its own, with no camera — so the auto-snap can be tested by feeding the
+   <video> a drawn canvas stream instead of a real camera. */
+function buildScanner(){
   document.body.insertAdjacentHTML("beforeend",
     '<div class="modal" id="scanner" style="z-index:95" onclick="if(event.target===this)closeScanner()">'
     + '<div class="sheet scan"><button class="x" onclick="closeScanner()">&times;</button>'
     + '<h2>📷 Scan a card</h2>'
-    + '<div class="scansub">Hold the card flat, fill the yellow box, and keep the name and the number at the bottom sharp.</div>'
+    + '<div class="scansub">Hold the card flat inside the yellow box. It snaps by itself once the card is steady and sharp.</div>'
     + '<div class="scanstage" id="scanstage"><video id="scanvideo" playsinline muted autoplay></video>'
-    +   '<div class="scanframe"><span>Fit the card in the box</span></div></div>'
+    +   '<div class="scanframe" id="scanframe"><span id="framelabel">Put a card in the box</span><i id="holdbar"></i></div></div>'
     + '<div class="scanbtns">'
     +   '<button class="btn-gold" id="snapbtn" onclick="snapCard()">📸 Snap</button>'
     +   '<label class="back">🖼 Use a photo<input type="file" accept="image/*" hidden onchange="scanFile(this)"></label>'
+    +   '<label class="autotog"><input type="checkbox" id="autosnap"' + (autoSnapOn ? " checked" : "") + ' onchange="setAutoSnap(this.checked)">Snap by itself</label>'
     + '</div>'
     + '<div class="scanstatus" id="scanstatus">Starting the camera…</div>'
     + '<div class="scanread" id="scanread" hidden>'
@@ -1189,10 +1192,10 @@ function openScanner(){
     + '</div>'
     + '<div class="found" id="scanhits"></div>'
     + '</div></div>');
-  startCamera();
-  getOcr().catch(() => {});                  // warm the reader up while the camera starts
 }
 function closeScanner(){
+  scanBusy = false;
+  stopAutoSnap();
   stopCamera();
   scanSeq++;                                  // drop any read still in flight
   const m = document.getElementById("scanner"); if(m) m.remove();
@@ -1211,14 +1214,19 @@ async function startCamera(){
   }
   try{
     const stream = await navigator.mediaDevices.getUserMedia({
-      video: {facingMode: {ideal: "environment"}, width: {ideal: 1920}, height: {ideal: 1440}}, audio: false
+      video: {facingMode: {ideal: "environment"}, width: {ideal: 2560}, height: {ideal: 1920}}, audio: false
     });
     if(!document.getElementById("scanner")){ stream.getTracks().forEach(t => t.stop()); return; }
     scanStream = stream;
-    const v = document.getElementById("scanvideo");
-    v.srcObject = stream;
-    await v.play().catch(() => {});
-    if(status) status.textContent = "Fit the card in the yellow box, then tap Snap.";
+    // widest zoom the camera offers (phones that support it), so it doesn't start zoomed in
+    const track = stream.getVideoTracks()[0];
+    try{
+      const caps = track && track.getCapabilities ? track.getCapabilities() : {};
+      if(caps.zoom) track.applyConstraints({advanced: [{zoom: caps.zoom.min}]}).catch(() => {});
+    }catch(e){}
+    attachVideo(stream);
+    if(status) status.textContent = autoSnapOn ? "Hold a card in the yellow box — it snaps by itself when it's steady and sharp."
+      : "Fit the card in the yellow box, then tap Snap.";
   }catch(e){
     const n = e && e.name;
     noCam(n === "NotAllowedError" ? "The camera is blocked for this site.<br>Allow it from the icon in the address bar, or tap <b>Use a photo</b>."
@@ -1226,6 +1234,23 @@ async function startCamera(){
       : "The camera didn't start (" + esc(n || e) + ").<br>Tap <b>Use a photo</b> instead.");
   }
 }
+/* Show the stream in the stage, shaped like the camera's own picture so nothing is cropped away. */
+function attachVideo(stream){
+  const v = document.getElementById("scanvideo");
+  if(!v) return;
+  v.onloadedmetadata = v.onresize = fitStage;
+  v.srcObject = stream;
+  v.play().catch(() => {});
+  startAutoSnap();
+}
+function fitStage(){
+  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
+  if(!v || !stage || !v.videoWidth) return;
+  stage.style.aspectRatio = v.videoWidth + " / " + v.videoHeight;
+  // a portrait picture has room to spare above and below the card; a landscape one doesn't
+  stage.style.setProperty("--fh", Math.round(frameHeight(v.videoWidth, v.videoHeight) * 100) + "%");
+}
+function frameHeight(vw, vh){ return vh >= vw ? 0.68 : 0.84; }
 function stopCamera(){
   if(scanStream){ scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
 }
@@ -1255,20 +1280,160 @@ function getOcr(){
 
 /* The yellow box is centred on the stage at 84% of its height with a card's shape; the video is
    drawn object-fit:cover, so map that box back into the video's own pixels to crop the card. */
-function snapCard(){
-  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
-  if(!v || !v.videoWidth) return;
+/* Where the yellow box sits in the video's own pixels. The video is drawn object-fit:contain, so
+   undo that scale and letterboxing. Everything that reads a frame — Snap and auto-snap — uses this. */
+function frameCrop(v, stage){
   const sw = stage.clientWidth, sh = stage.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
-  const scale = Math.max(sw / vw, sh / vh);
-  const fh = sh * 0.84, fw = fh * 63 / 88;
+  const scale = Math.min(sw / vw, sh / vh);
+  const fh = sh * frameHeight(vw, vh), fw = fh * 63 / 88;
   const fx = (sw - fw) / 2, fy = (sh - fh) / 2;
   const ox = (sw - vw * scale) / 2, oy = (sh - vh * scale) / 2;
   const cx = Math.max(0, (fx - ox) / scale), cy = Math.max(0, (fy - oy) / scale);
-  const cw = Math.min(vw - cx, fw / scale), ch = Math.min(vh - cy, fh / scale);
+  return {x: cx, y: cy, w: Math.min(vw - cx, fw / scale), h: Math.min(vh - cy, fh / scale)};
+}
+function snapCard(){
+  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
+  if(!v || !v.videoWidth || scanBusy) return;
+  const r = frameCrop(v, stage);
   const card = document.createElement("canvas");
-  card.width = Math.round(cw); card.height = Math.round(ch);
-  card.getContext("2d").drawImage(v, cx, cy, cw, ch, 0, 0, card.width, card.height);
+  card.width = Math.round(r.w); card.height = Math.round(r.h);
+  card.getContext("2d").drawImage(v, r.x, r.y, r.w, r.h, 0, 0, card.width, card.height);
   readAndLookup(card);
+}
+
+/* ---- auto-snap ----
+   Five times a second, look at a tiny grey copy of the yellow box (plus a margin) and ask:
+   - is a card lined up with it? — a straight edge (a column or row of strong contrast) near at
+     least 3 of the 4 sides, clearly stronger than the background's general texture;
+   - is it sharp? — enough fine detail (Laplacian) inside the card;
+   - is it steady? — the picture barely changed since the last look.
+   When all three hold for AUTO_HOLD looks in a row, snap. Then wait: it won't snap again until
+   the card has left the box, so one card isn't scanned over and over.
+   Thresholds were tuned on drawn test frames of real card art on wood / carpet / dark / white
+   desks, with and without sensor noise, not a real camera. Measured: a still card moves 2.5–3.5,
+   6px of motion is 10+; a card 85–100% of the box (or tilted 6°) finds 3–4 edges, an empty desk or
+   a card at 60% finds 0. Focus (focusScore) is 0.65–0.73 for every sharp card tried — text-heavy
+   1999 cards, full arts, a plain Energy — 0.52–0.62 at a 1.5px blur, ≤0.49 at 3px, 0 on a bare desk.
+   Through a video stream the same sharp Pikachu scored 0.60, so AUTO_FOCUS sits a little lower at 0.56.
+   A real camera's video compression may pull sharp frames lower still, so a card that has held its best
+   focus (≥92% of its peak, and not below AUTO_FOCUS_FLOOR) for AUTO_PATIENT looks also counts. */
+const AUTO_W = 72, AUTO_H = 100, AUTO_HOLD = 5, AUTO_PATIENT = 10;
+const AUTO_EDGE = 1.9, AUTO_STEADY = 8, AUTO_FOCUS = 0.56, AUTO_FOCUS_FLOOR = 0.45;
+let autoSnapOn = store.get("pkAutoSnap", true);
+let autoTimer = null, autoPrev = null, autoGood = 0, autoArmed = true, autoEmpty = 0, scanBusy = false;
+let autoPeak = 0, autoPresent = 0;          // best focus seen, and how long, since this card came into the box
+function setAutoSnap(on){
+  autoSnapOn = !!on;
+  store.set("pkAutoSnap", autoSnapOn);
+  autoGood = 0; showHold(false, 0);
+  const st = document.getElementById("scanstatus");
+  if(st && !scanBusy && !scanHits.length) st.textContent = autoSnapOn
+    ? "Hold a card in the yellow box — it snaps by itself when it's steady and sharp." : "Fit the card in the yellow box, then tap Snap.";
+}
+function startAutoSnap(){
+  stopAutoSnap();
+  autoArmed = true; autoPrev = null; autoEmpty = 0;
+  autoTimer = setInterval(autoTick, 200);
+}
+function stopAutoSnap(){
+  if(autoTimer) clearInterval(autoTimer);
+  autoTimer = null; autoGood = 0;
+}
+/* Grey pixels of the box plus a 10% margin each side, AUTO_W × AUTO_H. */
+function frameGrey(src, r){
+  const mx = r.w * 0.1, my = r.h * 0.1;
+  const c = frameGrey.c || (frameGrey.c = document.createElement("canvas"));
+  c.width = AUTO_W; c.height = AUTO_H;
+  const g = c.getContext("2d", {willReadFrequently: true});
+  g.drawImage(src, r.x - mx, r.y - my, r.w + 2 * mx, r.h + 2 * my, 0, 0, AUTO_W, AUTO_H);
+  const d = g.getImageData(0, 0, AUTO_W, AUTO_H).data, out = new Float32Array(AUTO_W * AUTO_H);
+  for(let i = 0, j = 0; i < d.length; i += 4, j++) out[j] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+  return out;
+}
+function frameStats(gr, prev){
+  const W = AUTO_W, H = AUTO_H, at = (x, y) => gr[y * W + x];
+  // general texture: mean gradient over the whole picture
+  let tex = 0, n = 0;
+  for(let y = 1; y < H - 1; y++) for(let x = 1; x < W - 1; x++){ tex += Math.abs(at(x+1, y) - at(x-1, y)) + Math.abs(at(x, y+1) - at(x, y-1)); n++; }
+  tex /= n;
+  // strongest straight edge in the outer band of each side (the card's edge lands ~8% in)
+  const colEdge = (x0, x1) => { let best = 0; for(let x = Math.max(1, x0); x <= Math.min(W - 2, x1); x++){ let m = 0; for(let y = Math.round(H * 0.15); y < H * 0.85; y++) m += Math.abs(at(x+1, y) - at(x-1, y)); best = Math.max(best, m / (H * 0.7)); } return best; };
+  const rowEdge = (y0, y1) => { let best = 0; for(let y = Math.max(1, y0); y <= Math.min(H - 2, y1); y++){ let m = 0; for(let x = Math.round(W * 0.15); x < W * 0.85; x++) m += Math.abs(at(x, y+1) - at(x, y-1)); best = Math.max(best, m / (W * 0.7)); } return best; };
+  const bw = Math.round(W * 0.2), bh = Math.round(H * 0.2);
+  const sides = [colEdge(0, bw), colEdge(W - 1 - bw, W - 1), rowEdge(0, bh), rowEdge(H - 1 - bh, H - 1)];
+  const edges = sides.filter(e => e > AUTO_EDGE * (tex / 2) + 6).length;
+  // movement since the last look
+  let move = 99;
+  if(prev){ move = 0; for(let i = 0; i < gr.length; i++) move += Math.abs(gr[i] - prev[i]); move /= gr.length; }
+  return {edges: edges, move: move, tex: tex, card: edges >= 3, still: move <= AUTO_STEADY};
+}
+/* How much of the picture's fine detail a small blur takes away (after Crété-Roffet): a sharp
+   picture loses a lot, an already blurry one hardly changes — so it doesn't depend on how much
+   print or art a card has. Measured on the top half of the card at 240×150. */
+function focusScore(src, r){
+  const FW = 240, FH = 150;
+  const c = focusScore.c || (focusScore.c = document.createElement("canvas"));
+  c.width = FW; c.height = FH;
+  const g = c.getContext("2d", {willReadFrequently: true});
+  g.drawImage(src, r.x + r.w * 0.06, r.y + r.h * 0.04, r.w * 0.88, r.w * 0.88 * FH / FW, 0, 0, FW, FH);
+  const d = g.getImageData(0, 0, FW, FH).data, L = new Float32Array(FW * FH), T = new Float32Array(FW * FH), B = new Float32Array(FW * FH);
+  for(let i = 0, j = 0; i < d.length; i += 4, j++) L[j] = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+  for(let y = 0; y < FH; y++) for(let x = 0; x < FW; x++){      // box blur 5, across then down
+    let s = 0, n = 0; for(let k = -2; k <= 2; k++){ const xx = x + k; if(xx >= 0 && xx < FW){ s += L[y * FW + xx]; n++; } }
+    T[y * FW + x] = s / n;
+  }
+  for(let y = 0; y < FH; y++) for(let x = 0; x < FW; x++){
+    let s = 0, n = 0; for(let k = -2; k <= 2; k++){ const yy = y + k; if(yy >= 0 && yy < FH){ s += T[yy * FW + x]; n++; } }
+    B[y * FW + x] = s / n;
+  }
+  let all = 0, lost = 0;
+  for(let y = 0; y < FH - 1; y++) for(let x = 0; x < FW - 1; x++){
+    const i = y * FW + x;
+    const o = Math.abs(L[i] - L[i + FW]) + Math.abs(L[i] - L[i + 1]);
+    const b = Math.abs(B[i] - B[i + FW]) + Math.abs(B[i] - B[i + 1]);
+    all += o; lost += Math.max(0, o - b);
+  }
+  return all ? lost / all : 0;
+}
+function autoTick(){
+  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
+  if(!document.getElementById("scanner")){ stopAutoSnap(); return; }
+  if(!v || !v.videoWidth || !stage) return;
+  let st;
+  try{
+    const crop = frameCrop(v, stage);
+    const gr = frameGrey(v, crop);
+    st = frameStats(gr, autoPrev);
+    autoPrev = gr;
+    st.focus = st.card ? focusScore(v, crop) : 0;
+  }catch(e){ return; }
+  if(st.card){ autoPresent++; if(st.still) autoPeak = Math.max(autoPeak, st.focus); }
+  else { autoPresent = 0; autoPeak = 0; }
+  st.focused = st.focus >= AUTO_FOCUS
+    || (st.focus >= AUTO_FOCUS_FLOOR && st.focus >= autoPeak * 0.92 && autoPresent >= AUTO_PATIENT);
+  autoTick.last = st;                          // handy when checking the numbers by hand
+  // re-arm once the snapped card has gone
+  autoEmpty = st.card ? 0 : autoEmpty + 1;
+  if(!autoArmed && autoEmpty >= 3) autoArmed = true;
+  const good = st.card && st.focused && st.still;
+  if(!autoSnapOn || scanBusy || !autoArmed){ autoGood = 0; showHold(st.card && autoArmed, 0, !autoArmed && st.card); return; }
+  autoGood = good ? autoGood + 1 : 0;
+  showHold(st.card, autoGood / AUTO_HOLD, false, st);
+  if(autoGood >= AUTO_HOLD){
+    autoGood = 0; autoArmed = false;
+    showHold(false, 0, true);
+    snapCard();
+  }
+}
+function showHold(ready, fill, done, st){
+  const f = document.getElementById("scanframe"), bar = document.getElementById("holdbar"), label = document.getElementById("framelabel");
+  if(!f) return;
+  f.classList.toggle("ready", !!ready);
+  if(bar) bar.style.width = Math.min(100, Math.round(fill * 100)) + "%";
+  if(label) label.textContent = done ? "Got it — take the card out for the next one"
+    : !autoSnapOn ? "Fit the card in the box"
+    : ready ? (fill > 0 ? "Hold still…" : st && !st.still ? "Hold it steady" : st && !st.focused ? "Getting it sharp…" : "Hold it steady")
+    : "Put a card in the box";
 }
 function scanFile(input){
   const f = input.files && input.files[0];
@@ -1291,6 +1456,7 @@ let scanSig = null;          // colour signature of the last snapped card, for m
 
 async function readAndLookup(card, isPhoto){
   const seq = ++scanSeq;
+  scanBusy = true;
   const btn = document.getElementById("snapbtn"); if(btn) btn.disabled = true;
   scanHits = []; drawScanHits();                // don't leave the last card's matches up to be tapped by mistake
   setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Reading the card…');
@@ -1308,6 +1474,7 @@ async function readAndLookup(card, isPhoto){
     if(seq === scanSeq) setScanStatus(esc(e.message || e));
   }finally{
     if(btn) btn.disabled = false;
+    if(seq === scanSeq) scanBusy = false;       // a newer read still running keeps it busy
   }
 }
 
@@ -1685,13 +1852,16 @@ function initAccounts(){
 function useProfile(key, p){
   USER = {key: key, name: p.name};
   OWNED = p.owned || {};
-  BINDER = BINDER_COLS[p.binder] ? p.binder : 9;
+  for(const k in OWNED){                       // old {page, pocket} slots become one number
+    const n = slotNumber(OWNED[k].slot, p.binder);
+    if(n) OWNED[k].slot = n; else delete OWNED[k].slot;
+  }
 }
 
 function saveCollection(){
   if(!USER) return;
   const all = profiles();
-  all[USER.key] = Object.assign({}, all[USER.key], {name: USER.name, owned: OWNED, binder: BINDER});   // keeps pw
+  all[USER.key] = Object.assign({}, all[USER.key], {name: USER.name, owned: OWNED});   // keeps pw
   writeProfiles(all);
 }
 
@@ -1821,17 +1991,14 @@ async function signIn(ev){
   const old = store.get("pkOwned", null);
   let moved = 0;
   if(old && Object.keys(old).length){
-    const mine = all[key], taken = {};
-    for(const k in mine.owned){ const sl = mine.owned[k].slot; if(sl) taken[sl.p + ":" + sl.s] = 1; }
+    const mine = all[key], taken = {}, oldPerPage = store.get("pkBinder", 9);
+    for(const k in mine.owned){ const n = slotNumber(mine.owned[k].slot, mine.binder); if(n) taken[n] = 1; }
     for(const k in old){
       if(mine.owned[k]) continue;
-      const e = old[k];
-      if(e.slot && taken[e.slot.p + ":" + e.slot.s]) delete e.slot;     // one card per pocket
-      else if(e.slot) taken[e.slot.p + ":" + e.slot.s] = 1;
+      const e = old[k], n = slotNumber(e.slot, oldPerPage);
+      if(n && !taken[n]){ e.slot = n; taken[n] = 1; } else delete e.slot;   // one card per slot
       mine.owned[k] = e; moved++;
     }
-    const oldB = store.get("pkBinder", null);
-    if(isNew && BINDER_COLS[oldB]) mine.binder = oldB;
   }
   if(!writeProfiles(all)) return;
   if(old){ localStorage.removeItem("pkOwned"); localStorage.removeItem("pkBinder"); }
@@ -1849,7 +2016,7 @@ async function signIn(ev){
   }
 }
 function signOut(){
-  USER = null; OWNED = {}; BINDER = 9; pendingOwn = "";
+  USER = null; OWNED = {}; pendingOwn = "";
   try{ localStorage.removeItem("pkUser"); }catch(e){}
   drawAccount(); refreshView(); redrawSheet();
 }
@@ -1904,7 +2071,7 @@ function openCard(id){
   const c = CARDS.get(id); if(!c) return;
   closeCard();            // never stack two sheets — duplicate ids would cross their wires
   modalCard = c;
-  binderPage = (OWNED[id] && OWNED[id].slot) ? OWNED[id].slot.p : 1;
+  slotEditing = false;
   const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
   const withPrice = Object.keys(tp).filter(k => tp[k] && tp[k].market != null);
   modalVar = withPrice[0] || Object.keys(tp)[0] || "";
