@@ -246,7 +246,10 @@
 
   /* ---------- modal ---------- */
   .modal{position:fixed;inset:0;z-index:100;background:rgba(4,12,32,.82);backdrop-filter:blur(6px);
-    display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
+    display:flex;padding:24px;overflow:auto}
+  /* centred with margin:auto, not align-items:center — that clips the top of a sheet taller than
+     the screen (the card sheet, the scanner) where it can't be scrolled back to */
+  .modal > .sheet{margin:auto}
   .sheet{
     background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
     border-radius:18px;max-width:900px;width:100%;padding:24px;display:flex;gap:26px;flex-wrap:wrap;
@@ -279,6 +282,41 @@
   .pull{animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
   @keyframes pop{from{opacity:0;transform:translateY(24px) scale(.9) rotate(-3deg)}to{opacity:1;transform:none}}
   footer{color:var(--dim);font-size:12px;text-align:center;padding:40px 0 10px}
+
+  /* ---------- card scanner ---------- */
+  .scan{max-width:560px;flex-direction:column;flex-wrap:nowrap;gap:12px;padding:22px 20px 20px}   /* wrap stretches the result rows */
+  .scan h2{margin:0;font-size:22px}
+  .scan .scansub{color:var(--dim);font-size:13px;margin-top:-6px}
+  .scanstage{
+    position:relative;width:100%;aspect-ratio:3/4;max-height:58vh;background:#000;border-radius:12px;overflow:hidden;
+    margin:0 auto;
+  }
+  .scanstage video,.scanstage canvas{width:100%;height:100%;object-fit:cover;display:block}
+  .scanframe{
+    position:absolute;left:50%;top:50%;height:84%;aspect-ratio:63/88;transform:translate(-50%,-50%);
+    border:3px solid var(--gold);border-radius:14px;box-shadow:0 0 0 999px rgba(4,12,32,.55);pointer-events:none;
+  }
+  .scanframe span{
+    position:absolute;left:50%;top:-30px;transform:translateX(-50%);white-space:nowrap;font-size:12.5px;font-weight:700;
+    color:var(--gold);text-shadow:0 1px 3px #000;
+  }
+  .scanstage .camerr{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;
+    padding:24px;color:var(--dim);font-size:14px;line-height:1.5}
+  .scanbtns{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .scanbtns .btn-gold{font-size:15px;padding:11px 20px}
+  .scanbtns label.back{display:inline-block}
+  .scanstatus{font-size:13.5px;color:var(--dim)}
+  .scanstatus b{color:var(--gold)}
+  .scanread{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;color:var(--dim)}
+  .scanread[hidden]{display:none}
+  .scanread input{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;padding:7px 10px;
+    font:inherit;font-size:14px;outline:none;min-width:0;
+  }
+  .scanread input:focus{border-color:var(--gold)}
+  .scanread #scanname{flex:1 1 150px}
+  .scanread #scannum{width:110px}
+  .scan .found{margin-top:0;grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
@@ -608,6 +646,7 @@ function toggleMore(){
 
 /* Re-draw whatever is on screen after the collection changes. */
 function refreshView(){
+  if(document.getElementById("scanhits")) drawScanHits();   // the scanner shows add buttons too
   if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
   else if(VIEW === "set") drawCards();
@@ -1058,7 +1097,7 @@ function renderOwned(){
       + '<div class="hint" style="padding-top:40px"><h3>Nothing in your collection yet</h3>'
       + 'Hit <b style="color:#7ee38a">+ Add to collection</b> on any card in Card search, '
       + 'or open a card and hit <b style="color:#7ee38a">✓ I have this card</b>.'
-      + '<div class="egs"><button onclick="showSearch()">Search for a card</button>'
+      + '<div class="egs"><button onclick="openScanner()">📷 Scan a card</button><button onclick="showSearch()">Search for a card</button>'
       + '<button onclick="showSets()">Browse the sets</button></div></div>';
     return;
   }
@@ -1071,6 +1110,7 @@ function renderOwned(){
     +   '</div></div></div>'
     + '<div class="tools">'
     +   '<input type="search" id="oq" placeholder="Search your collection…" value="' + esc(ownedTerm) + '">'
+    +   '<button class="btn-gold" onclick="openScanner()">📷 Scan a card</button>'
     +   '<select id="osort" aria-label="Sort your collection" onchange="ownedSort=this.value;store.set(\'pkOwnedSort\',ownedSort);drawOwned()">'
     +     OWNED_SORTS.map(o => '<option value="' + o[0] + '"' + (o[0] === ownedSort ? " selected" : "") + '>' + o[1] + '</option>').join("")
     +   '</select>'
@@ -1112,6 +1152,454 @@ function drawOwned(){
   document.getElementById("oshown").textContent = term ? hits.length + " / " + list.length + " cards" : "";
   document.getElementById("ogrid").innerHTML = sortOwned(hits).map(ownedTile).join("")
     || '<div class="msg" style="grid-column:1/-1">Nothing in your collection matches “' + esc(ownedTerm.trim()) + '”.</div>';
+}
+
+/* ---------------- card scanner ----------------
+   A faster way into the collection: point the camera at a card and snap it. The site reads two
+   things off the photo with Tesseract.js — the card's name from the top strip and its collector
+   number ("199/165") from the bottom strip — and looks that printing up in the API.
+   Reading a photo is never trusted blindly: what was read shows in editable boxes, the matches are
+   ranked (number + set size + name), and you tap "+ Add to collection" on the right one.
+   Tesseract (script, wasm and English data from cdn.jsdelivr.net) loads only when the scanner opens;
+   nothing else on the site depends on it. The camera needs https or localhost; "Use a photo"
+   works anywhere, and on phones opens the camera app. */
+const TESS_SRC = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
+let scanStream = null, ocrWorker = null, ocrLoading = null, scanSeq = 0;
+let scanHits = [], scanRead = {name: "", num: "", total: ""};
+
+function openScanner(){
+  if(needSignIn()) return;                   // adding needs somewhere to save it
+  if(document.getElementById("scanner")) return;
+  document.body.insertAdjacentHTML("beforeend",
+    '<div class="modal" id="scanner" style="z-index:95" onclick="if(event.target===this)closeScanner()">'
+    + '<div class="sheet scan"><button class="x" onclick="closeScanner()">&times;</button>'
+    + '<h2>📷 Scan a card</h2>'
+    + '<div class="scansub">Hold the card flat, fill the yellow box, and keep the name and the number at the bottom sharp.</div>'
+    + '<div class="scanstage" id="scanstage"><video id="scanvideo" playsinline muted autoplay></video>'
+    +   '<div class="scanframe"><span>Fit the card in the box</span></div></div>'
+    + '<div class="scanbtns">'
+    +   '<button class="btn-gold" id="snapbtn" onclick="snapCard()">📸 Snap</button>'
+    +   '<label class="back">🖼 Use a photo<input type="file" accept="image/*" hidden onchange="scanFile(this)"></label>'
+    + '</div>'
+    + '<div class="scanstatus" id="scanstatus">Starting the camera…</div>'
+    + '<div class="scanread" id="scanread" hidden>'
+    +   'Name <input id="scanname" placeholder="Card name" onkeydown="if(event.key===&quot;Enter&quot;)lookupScan()">'
+    +   'Number <input id="scannum" placeholder="199/165" onkeydown="if(event.key===&quot;Enter&quot;)lookupScan()">'
+    +   '<button class="back" style="padding:7px 12px;font-size:13px" onclick="lookupScan()">Search</button>'
+    + '</div>'
+    + '<div class="found" id="scanhits"></div>'
+    + '</div></div>');
+  startCamera();
+  getOcr().catch(() => {});                  // warm the reader up while the camera starts
+}
+function closeScanner(){
+  stopCamera();
+  scanSeq++;                                  // drop any read still in flight
+  const m = document.getElementById("scanner"); if(m) m.remove();
+  scanHits = [];
+}
+async function startCamera(){
+  const status = document.getElementById("scanstatus"), stage = document.getElementById("scanstage");
+  const noCam = msg => {
+    if(stage) stage.innerHTML = '<div class="camerr"><div>' + msg + '</div></div>';
+    const b = document.getElementById("snapbtn"); if(b) b.hidden = true;
+    const typed = document.getElementById("scanread"); if(typed) typed.hidden = false;   // typing a card in still works
+    if(status) status.textContent = "";
+  };
+  if(!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia)){
+    return noCam("This browser can't use the camera here.<br>Tap <b>Use a photo</b> instead.");
+  }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({
+      video: {facingMode: {ideal: "environment"}, width: {ideal: 1920}, height: {ideal: 1440}}, audio: false
+    });
+    if(!document.getElementById("scanner")){ stream.getTracks().forEach(t => t.stop()); return; }
+    scanStream = stream;
+    const v = document.getElementById("scanvideo");
+    v.srcObject = stream;
+    await v.play().catch(() => {});
+    if(status) status.textContent = "Fit the card in the yellow box, then tap Snap.";
+  }catch(e){
+    const n = e && e.name;
+    noCam(n === "NotAllowedError" ? "The camera is blocked for this site.<br>Allow it from the icon in the address bar, or tap <b>Use a photo</b>."
+      : n === "NotFoundError" || n === "OverconstrainedError" ? "No camera found.<br>Tap <b>Use a photo</b> instead."
+      : "The camera didn't start (" + esc(n || e) + ").<br>Tap <b>Use a photo</b> instead.");
+  }
+}
+function stopCamera(){
+  if(scanStream){ scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+}
+
+function loadTesseract(){
+  if(window.Tesseract) return Promise.resolve();
+  if(!ocrLoading){
+    ocrLoading = new Promise((res, rej) => {
+      const sc = document.createElement("script");
+      sc.src = TESS_SRC;
+      sc.onload = res;
+      sc.onerror = () => { ocrLoading = null; sc.remove(); rej(new Error("Couldn't load the card reader — check your connection.")); };
+      document.head.appendChild(sc);
+    });
+  }
+  return ocrLoading;
+}
+// one shared reader; a failed load clears it so the next snap tries again
+function getOcr(){
+  if(!ocrWorker){
+    ocrWorker = loadTesseract()
+      .then(() => Tesseract.createWorker("eng"))
+      .catch(e => { ocrWorker = null; throw e; });
+  }
+  return ocrWorker;
+}
+
+/* The yellow box is centred on the stage at 84% of its height with a card's shape; the video is
+   drawn object-fit:cover, so map that box back into the video's own pixels to crop the card. */
+function snapCard(){
+  const v = document.getElementById("scanvideo"), stage = document.getElementById("scanstage");
+  if(!v || !v.videoWidth) return;
+  const sw = stage.clientWidth, sh = stage.clientHeight, vw = v.videoWidth, vh = v.videoHeight;
+  const scale = Math.max(sw / vw, sh / vh);
+  const fh = sh * 0.84, fw = fh * 63 / 88;
+  const fx = (sw - fw) / 2, fy = (sh - fh) / 2;
+  const ox = (sw - vw * scale) / 2, oy = (sh - vh * scale) / 2;
+  const cx = Math.max(0, (fx - ox) / scale), cy = Math.max(0, (fy - oy) / scale);
+  const cw = Math.min(vw - cx, fw / scale), ch = Math.min(vh - cy, fh / scale);
+  const card = document.createElement("canvas");
+  card.width = Math.round(cw); card.height = Math.round(ch);
+  card.getContext("2d").drawImage(v, cx, cy, cw, ch, 0, 0, card.width, card.height);
+  readAndLookup(card);
+}
+function scanFile(input){
+  const f = input.files && input.files[0];
+  input.value = "";
+  if(!f) return;
+  const img = new Image();
+  img.onload = () => {
+    const c = document.createElement("canvas");
+    c.width = img.naturalWidth; c.height = img.naturalHeight;
+    c.getContext("2d").drawImage(img, 0, 0);
+    URL.revokeObjectURL(img.src);
+    readAndLookup(c, true);
+  };
+  img.onerror = () => setScanStatus("That file isn't a picture the browser can open.");
+  img.src = URL.createObjectURL(f);
+}
+function setScanStatus(html){ const el = document.getElementById("scanstatus"); if(el) el.innerHTML = html; }
+
+let scanSig = null;          // colour signature of the last snapped card, for matching pictures
+
+async function readAndLookup(card, isPhoto){
+  const seq = ++scanSeq;
+  const btn = document.getElementById("snapbtn"); if(btn) btn.disabled = true;
+  scanHits = []; drawScanHits();                // don't leave the last card's matches up to be tapped by mistake
+  setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Reading the card…');
+  try{
+    scanSig = artSignature(card, card.width, card.height);
+    const read = await readCard(card, isPhoto);
+    if(seq !== scanSeq) return;
+    scanRead = read;
+    const top = read.numbers[0];
+    document.getElementById("scanread").hidden = false;
+    document.getElementById("scanname").value = read.name;
+    document.getElementById("scannum").value = top ? top.num + "/" + top.total : "";
+    await lookupScan(seq, read);
+  }catch(e){
+    if(seq === scanSeq) setScanStatus(esc(e.message || e));
+  }finally{
+    if(btn) btn.disabled = false;
+  }
+}
+
+/* ---- reading text off the card ---- */
+
+/* Crops a strip of the card, scales it up and flattens it to high-contrast grey — Tesseract reads
+   small printed text far better that way. invert=true handles light text on dark or foil cards. */
+function strip(card, x0, y0, x1, y1, invert){
+  const w = card.width * (x1 - x0), h = card.height * (y1 - y0);
+  const k = Math.max(1, 1400 / w);
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext("2d", {willReadFrequently: true});
+  g.imageSmoothingQuality = "high";
+  g.drawImage(card, card.width * x0, card.height * y0, w, h, 0, 0, c.width, c.height);
+  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+  let lo = 255, hi = 0;
+  for(let i = 0; i < d.length; i += 4){
+    const l = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    d[i] = l; if(l < lo) lo = l; if(l > hi) hi = l;
+  }
+  const span = Math.max(1, hi - lo);
+  for(let i = 0; i < d.length; i += 4){
+    let l = (d[i] - lo) * 255 / span;
+    if(invert) l = 255 - l;
+    d[i] = d[i+1] = d[i+2] = l;
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+/* Hard black-and-white version of a region. Full-art and foil cards print the number as small
+   slanted white text with a dark outline, which plain contrast can't read; keeping only the darkest
+   pixels (the outline) or only the brightest (the fill) turns it back into readable ink. */
+function inked(card, x0, y0, x1, y1, thr, keepBright){
+  const w = card.width * (x1 - x0), h = card.height * (y1 - y0), k = 1800 / w;
+  const c = document.createElement("canvas");
+  c.width = Math.round(w * k); c.height = Math.round(h * k);
+  const g = c.getContext("2d", {willReadFrequently: true});
+  g.imageSmoothingQuality = "high";
+  g.drawImage(card, card.width * x0, card.height * y0, w, h, 0, 0, c.width, c.height);
+  const im = g.getImageData(0, 0, c.width, c.height), d = im.data;
+  for(let i = 0; i < d.length; i += 4){
+    const l = 0.299 * d[i] + 0.587 * d[i+1] + 0.114 * d[i+2];
+    d[i] = d[i+1] = d[i+2] = (keepBright ? l > thr : l < thr) ? 0 : 255;
+  }
+  g.putImageData(im, 0, 0);
+  return c;
+}
+async function ocrRun(canvas, psm, whitelist){
+  const w = await getOcr();
+  await w.setParameters({tessedit_pageseg_mode: String(psm), tessedit_char_whitelist: whitelist || ""});
+  return (await w.recognize(canvas, {}, {text: true, blocks: true})).data;
+}
+async function ocrText(canvas, psm, whitelist){ return (await ocrRun(canvas, psm, whitelist)).text || ""; }
+
+/* The card's name is the biggest text on its top strip, so take the tallest real word there (and
+   the equally tall words beside it — "Mr. Mime"). Small print like "STAGE 2" and "Evolves from
+   Charmeleon" loses on height. */
+const NAME_JUNK = /^(basic|stage|stage1|stage2|hp|evolves|from|put|on|the|trainer|item|supporter|stadium|tool|pokemon|pokémon|energy|special|ability|mega|v|vmax|vstar|ex|gx|tag|team|rule|lv|level|break|prism|star|radiant|x|y)$/i;
+function nameFromWords(data){
+  const lines = [];
+  for(const bl of data.blocks || []) for(const pa of bl.paragraphs || []) for(const li of pa.lines || []) lines.push(li);
+  const clean = t => t.replace(/[^A-Za-zÀ-ÿ'’.\-]/g, "");
+  const usable = w => {
+    const t = clean(w.text);
+    return t.replace(/[^A-Za-zÀ-ÿ]/g, "").length >= 3 && !NAME_JUNK.test(t.replace(/[.'’-]/g, ""))
+      && !/tage|basic|evolve/i.test(t) && w.confidence >= 35;
+  };
+  let best = null, bestLine = null;
+  for(const li of lines) for(const w of li.words || []){
+    if(!usable(w)) continue;
+    const h = w.bbox.y1 - w.bbox.y0;
+    if(!best || h > best.h){ best = {h: h, t: clean(w.text)}; bestLine = li; }
+  }
+  if(!best) return "";
+  const parts = bestLine.words.filter(w => (w.bbox.y1 - w.bbox.y0) >= best.h * 0.7)
+    .map(w => clean(w.text)).filter(t => /[A-Za-zÀ-ÿ]{2,}/.test(t) && !NAME_JUNK.test(t.replace(/[.'’-]/g, "")));
+  return (parts.slice(0, 3).join(" ") || best.t).slice(0, 40);
+}
+
+/* What's typed in the Number box: "199/165", "004/165", "TG12/TG30", "GG13/GG70". */
+function findNumber(text){
+  const m = String(text).toUpperCase().replace(/\s*\/\s*/g, "/").match(/\b([A-Z]{0,3}\d{1,3})\/([A-Z]{0,3}\d{1,3})\b/);
+  return m ? {num: m[1], total: m[2]} : null;
+}
+
+/* Number candidates from OCR text. A tiny slanted number reads noisily — "199/165" comes back as
+   "7199/4165", "1997165" (slash read as a digit) or "020/789" (italic 1 read as 7). So every
+   plausible reading is tried and scored: trimming stray leading digits costs a little, trimming the
+   set size or swapping 7→1 costs more, and a reading only counts at all if its total is a real set
+   size from SETS and the number fits that set (secret rares run past it, so up to +150). */
+function numberFits(num, total, totals){
+  const n = parseInt(num, 10), t = parseInt(total, 10);
+  if(!(n >= 1) || !(t >= 1) || num.length > 3 || total.length > 3) return false;
+  if(totals.size && !totals.has(t)) return false;
+  return n <= t + 150;
+}
+function numberCandidates(text){
+  const totals = new Set(SETS.map(x => x.printedTotal).filter(Boolean));
+  const t = String(text).replace(/[|\\]/g, "/").replace(/(?<=\d)[Oo]|[Oo](?=\d)/g, "0").replace(/(?<=\d)[Il]|[Il](?=\d)/g, "1");
+  const out = [];
+  const add = (num, total, score) => {
+    if(!numberFits(num, total, totals)) return;
+    if(parseInt(total, 10) < 30) score *= 0.4;          // tiny sets are promos, rarely what's in hand
+    out.push({num: num, total: total, score: score});
+  };
+  const swaps = str => {
+    const v = [[str, 0]];
+    for(let i = 0; i < str.length; i++) if(str[i] === "7") v.push([str.slice(0, i) + "1" + str.slice(i + 1), 0.4]);
+    return v;
+  };
+  const pre = t.match(/\b([A-Z]{1,3})(\d{1,3})\s*\/\s*([A-Z]{1,3})(\d{1,3})\b/);
+  if(pre && pre[1] === pre[3]) out.push({num: pre[1] + pre[2], total: pre[3] + pre[4], score: 4});
+  for(const m of t.matchAll(/(\d{1,5})\s*\/\s*(\d{1,5})/g)){
+    for(let i = 0; i < m[1].length; i++) for(let j = 0; j <= m[2].length - 2; j++)
+      for(const [n, pn] of swaps(m[1].slice(i))) for(const [tt, pt] of swaps(m[2].slice(j)))
+        add(n, tt, 3 - 0.3 * i - 0.8 * j - pn - pt);
+  }
+  for(const m of t.matchAll(/\d{4,8}/g)){
+    const run = m[0];
+    for(let i = 1; i < run.length; i++) for(const skip of [1, 0]){
+      const total = run.slice(i + skip);
+      if(total.length < 2) continue;
+      for(let k = 0; k < i; k++) for(const [n, pn] of swaps(run.slice(k, i))) for(const [tt, pt] of swaps(total))
+        add(n, tt, (skip ? 1 : 0.6) - 0.3 * k - pn - pt);
+    }
+  }
+  return out;
+}
+
+async function readCard(card, isPhoto){
+  const name = nameFromWords(await ocrRun(strip(card, 0.02, 0.015, 0.8, 0.13), 11));
+
+  // number: modern cards print it bottom-left, older ones bottom-right. Cheapest reads first;
+  // stop as soon as the readings agree strongly on one number.
+  const digits = "0123456789/";
+  const L = [0, 0.88, 0.45, 0.99], R = [0.6, 0.915, 1, 1];
+  const passes = [
+    () => ocrText(strip(card, 0, 0.87, 1, 0.995), 11),
+    () => ocrText(strip(card, L[0], L[1], L[2], L[3]), 11),
+    () => ocrText(strip(card, R[0], R[1], R[2], R[3]), 11),
+    () => ocrText(inked(card, L[0], L[1], L[2], L[3], 60, false), 11, digits),
+    () => ocrText(inked(card, L[0], L[1], L[2], L[3], 235, true), 11, digits),
+    () => ocrText(inked(card, R[0], R[1], R[2], R[3], 90, false), 11, digits),
+    () => ocrText(inked(card, R[0], R[1], R[2], R[3], 235, true), 11, digits)
+  ];
+  if(isPhoto) passes.push(() => ocrText(strip(card, 0, 0, 1, 1), 11));   // a loose photo: look everywhere
+  const tally = {};
+  const keyOf = c => (/^\d+$/.test(c.num) ? String(parseInt(c.num, 10)) : c.num) + "/" + (/^\d+$/.test(c.total) ? String(parseInt(c.total, 10)) : c.total);
+  for(const pass of passes){
+    for(const c of numberCandidates(await pass())) tally[keyOf(c)] = (tally[keyOf(c)] || 0) + c.score;
+    const top = Object.values(tally).sort((x, y) => y - x)[0];
+    if(top >= 3) break;
+  }
+  const numbers = Object.entries(tally).sort((x, y) => y[1] - x[1]).slice(0, 3)
+    .map(([k, v]) => ({num: k.split("/")[0], total: k.split("/")[1], score: v}));
+  return {name: name, numbers: numbers};
+}
+
+/* ---- matching pictures ----
+   A small colour thumbnail of the artwork area, centred and scaled to unit length, so comparing
+   two is a correlation: ~1 for the same card even under different light, low for different art. */
+const SIG_W = 12, SIG_H = 16;
+function artSignature(src, w, h){
+  try{
+    const c = document.createElement("canvas");
+    c.width = SIG_W; c.height = SIG_H;
+    const g = c.getContext("2d", {willReadFrequently: true});
+    g.drawImage(src, w * 0.08, h * 0.1, w * 0.84, h * 0.42, 0, 0, SIG_W, SIG_H);
+    const d = g.getImageData(0, 0, SIG_W, SIG_H).data;
+    const v = new Float32Array(SIG_W * SIG_H * 3);
+    for(let i = 0, j = 0; i < d.length; i += 4){ v[j++] = d[i]; v[j++] = d[i+1]; v[j++] = d[i+2]; }
+    let mean = 0; for(const x of v) mean += x; mean /= v.length;
+    let norm = 0; for(let i = 0; i < v.length; i++){ v[i] -= mean; norm += v[i] * v[i]; }
+    norm = Math.sqrt(norm) || 1;
+    for(let i = 0; i < v.length; i++) v[i] /= norm;
+    return v;
+  }catch(e){ return null; }                     // a picture the browser won't let us read
+}
+const sigCache = new Map();
+function cardSignature(c){
+  if(sigCache.has(c.id)) return sigCache.get(c.id);
+  const url = c.images && (c.images.small || c.images.large);
+  const job = !url ? Promise.resolve(null) : new Promise(res => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";               // needed to read its pixels
+    img.onload = () => res(artSignature(img, img.naturalWidth, img.naturalHeight));
+    img.onerror = () => res(null);
+    img.src = url + (url.includes("?") ? "&" : "?") + "scan=1";   // not the grid's cached no-CORS copy
+    setTimeout(() => res(null), 8000);
+  });
+  sigCache.set(c.id, job);
+  return job;
+}
+function sigMatch(a, b){
+  if(!a || !b) return 0;
+  let s = 0; for(let i = 0; i < a.length; i++) s += a[i] * b[i];
+  return s;
+}
+function nameSim(a, b){
+  const grams = x => { x = String(x || "").toLowerCase().replace(/[^a-z]/g, ""); const g = []; for(let i = 0; i < x.length - 1; i++) g.push(x.slice(i, i + 2)); return g; };
+  const ga = grams(a), gb = grams(b);
+  if(!ga.length || !gb.length) return 0;
+  const pool = gb.slice(); let hit = 0;
+  for(const g of ga){ const k = pool.indexOf(g); if(k >= 0){ hit++; pool.splice(k, 1); } }
+  return 2 * hit / (ga.length + gb.length);
+}
+
+/* ---- finding the card ----
+   Gather likely cards from what was read (number + set size, the number on its own in case the
+   set size misread, the number with a letter prefix like GG13, and the name), then rank them by
+   number match, name likeness and — most of all — how much their picture looks like the photo. */
+async function lookupScan(seqIn, read){
+  const seq = seqIn || ++scanSeq;
+  const typedName = cleanScanName((document.getElementById("scanname") || {}).value);
+  const typedNum = ((document.getElementById("scannum") || {}).value || "").trim();
+  let numbers;
+  if(read) numbers = read.numbers;
+  else{
+    const f = findNumber(typedNum);
+    numbers = f ? [{num: f.num, total: f.total, score: 3}]
+      : (/^[A-Z]{0,3}\d{1,3}$/i.test(typedNum) ? [{num: typedNum.toUpperCase(), total: "", score: 2}] : []);
+  }
+  const name = typedName;
+  if(!name && !numbers.length){
+    setScanStatus("Couldn't read this card. Snap it again with the name and the number at the bottom in focus — or type them in the boxes above.");
+    document.getElementById("scanread").hidden = false;
+    scanHits = []; drawScanHits();
+    return;
+  }
+  setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Finding '
+    + esc([name, numbers[0] ? numbers[0].num + (numbers[0].total ? "/" + numbers[0].total : "") : ""].filter(Boolean).join(" · ")) + '…');
+
+  const apiNum = n => /^\d+$/.test(n) ? String(parseInt(n, 10)) : String(n).toUpperCase();
+  const queries = [];
+  numbers.slice(0, 2).forEach(n => { if(/^\d+$/.test(n.total)) queries.push('number:"' + apiNum(n.num) + '" set.printedTotal:' + parseInt(n.total, 10)); });
+  if(numbers[0]){
+    queries.push('number:"' + apiNum(numbers[0].num) + '"');
+    if(/^\d+$/.test(numbers[0].num) && /^\d+$/.test(numbers[0].total)) queries.push('number:"*' + apiNum(numbers[0].num) + '" set.printedTotal:' + parseInt(numbers[0].total, 10));
+  }
+  const firstWord = name.split(" ").sort((x, y) => y.length - x.length)[0] || "";
+  if(firstWord.length >= 3) queries.push('name:"*' + firstWord + '*"');
+
+  // all at once — the free API is slow and retries a lot, so waiting on each in turn adds up
+  const settled = await Promise.allSettled(queries.map(q =>
+    getJSON(API + "/cards?q=" + encodeURIComponent(q) + "&orderBy=-set.releaseDate&pageSize=" + (q.startsWith("name:") ? 100 : 60))));
+  if(seq !== scanSeq) return;
+  const pool = new Map();
+  for(const r of settled) if(r.status === "fulfilled") for(const c of r.value.data || []) pool.set(c.id, c);
+  if(!settled.some(r => r.status === "fulfilled")){
+    scanHits = []; drawScanHits();              // never leave the last card's matches showing
+    setScanStatus("The Pokémon TCG API isn't answering right now — tap Search in a moment.");
+    return;
+  }
+  const cards = [...pool.values()];
+  remember(cards);
+
+  // text score first, then compare pictures for the best few dozen
+  const textScore = c => {
+    let best = 0;
+    numbers.forEach((n, k) => {
+      const numOk = String(c.number).toUpperCase() === apiNum(n.num);
+      const suffixOk = String(c.number).toUpperCase().endsWith(apiNum(n.num));
+      const totOk = n.total && c.set && String(c.set.printedTotal) === String(parseInt(n.total, 10));
+      const pts = numOk && totOk ? 4 - k * 0.6 : suffixOk && totOk ? 3 - k * 0.6 : numOk ? 1.5 - k * 0.3 : 0;
+      if(pts > best) best = pts;
+    });
+    return best + 3 * nameSim(c.name, name);
+  };
+  // with a number to go on, the right card is near the top already; with only a name, look at more pictures
+  const ranked = cards.map(c => ({c: c, t: textScore(c), img: 0})).sort((x, y) => y.t - x.t).slice(0, numbers.length ? 30 : 60);
+  if(scanSig){                                   // a typed re-search still compares against the last snap
+    setScanStatus('<span class="spinner" style="display:inline-block;width:14px;height:14px;margin:0 6px -2px 0;border-width:2px"></span>Comparing pictures…');
+    const sigs = await Promise.all(ranked.map(r => cardSignature(r.c)));
+    if(seq !== scanSeq) return;
+    ranked.forEach((r, i) => { r.img = Math.max(0, sigMatch(scanSig, sigs[i])); });
+  }
+  ranked.forEach(r => { r.total = r.t + 6 * r.img; });
+  ranked.sort((x, y) => y.total - x.total);
+  scanHits = ranked.slice(0, 12).map(r => r.c);
+
+  const top = ranked[0], next = ranked[1];
+  const sure = top && (top.t >= 4 || top.img >= 0.8) && (!next || top.total - next.total >= 1.2);
+  setScanStatus(!top ? "No card matched. Fix the name or number above and hit Search."
+    : sure ? "Found it: <b>" + esc(top.c.name) + "</b> from " + esc((top.c.set || {}).name || "") + " — tap <b>+ Add to collection</b>. Wrong one? The next closest are below it."
+    : "Here are the closest matches — tap <b>+ Add to collection</b> on yours, or fix the name or number above and hit Search.");
+  drawScanHits();
+}
+function cleanScanName(v){ return String(v || "").replace(/[^A-Za-zÀ-ÿ0-9'’.\- ]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 40); }
+function drawScanHits(){
+  const el = document.getElementById("scanhits"); if(!el) return;
+  el.innerHTML = scanHits.map(findTile).join("");
 }
 
 /* ---------------- accounts ----------------
@@ -1538,6 +2026,7 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape"){
     if(document.getElementById("signin")) closeSignIn(true);
     else if(document.getElementById("modal")) closeCard();
+    else if(document.getElementById("scanner")) closeScanner();
     else if(VIEW === "set" || VIEW === "search") showSets();
   }
 });

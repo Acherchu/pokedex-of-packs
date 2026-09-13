@@ -37,6 +37,10 @@ Everything you add collects in one place with its total value, and you can searc
 newest, price high to low or low to high, name, set, or binder order. Click a
 card in your collection to record which page and pocket it's in in your real binder.
 
+**Scan a card** — point your camera at a card (or pick a photo of it) and the site reads its name
+and number, finds that exact card, and lets you add it with one tap. You can fix what it read if it
+gets it wrong.
+
 You have to **sign in** to make a collection so it can be saved — pick a name and a password.
 Your collection saves on that device under your name. Browsing sets, prices and card search never
 needs signing in.

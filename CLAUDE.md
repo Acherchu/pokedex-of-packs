@@ -139,6 +139,41 @@ results, a count in the grid legend, and a yellow box in the card sheet naming t
 wording adapts to which fallback was used — don't claim "brand-new sets take a while to sell"
 for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a real price.
 
+### Card scanner
+
+**📷 Scan a card** on My collection (and in its empty state) opens `openScanner()`: the camera
+(`getUserMedia`, rear camera preferred) with a yellow card-shaped box, a **Snap** button, **Use a
+photo** (file input — works without camera permission), and Name / Number boxes for fixing a
+misread or typing a card in by hand. Adding still needs signing in (`needSignIn`).
+
+**Never test the live camera yourself — the user said they'll test it personally.** Don't open
+the scanner in the Browser pane (it requests the camera). Test the reading and matching by
+feeding canvases or `File`s straight to `readAndLookup()` / `scanFile()`.
+
+How a snap becomes a card:
+
+1. `snapCard` crops the video to the yellow box (mapping it back through `object-fit:cover`).
+   `artSignature` takes a 12×16 colour thumbnail of the art area.
+2. `readCard` runs **Tesseract.js 7.0.0** (loaded lazily from `cdn.jsdelivr.net` on first open —
+   the one outside script on the site, and only for the scanner). Name = tallest real word on the
+   top strip (`nameFromWords`). Number = several passes over the bottom strip and both bottom
+   corners, plain contrast then hard black/white (`inked`, for white outlined text on full arts),
+   stopping once the readings agree.
+3. `numberCandidates` repairs noisy readings ("7199/4165", "1997165", "020/789" with 1→7) and only
+   accepts ones whose total is a real `printedTotal` from `SETS`.
+4. `lookupScan` gathers cards in parallel from: number + set size (top 2 readings), number alone
+   (rescues a misread set size), `*number` + set size (GG13/TG12 prefixes), and name. Ranks by
+   number match + name likeness (`nameSim`) + **picture likeness** (`cardSignature` vs the snap —
+   weighted highest). "Found it" only when the top result is clearly ahead; otherwise it says
+   "closest matches". Nothing is ever added without the user tapping the button.
+
+Measured on simulated phone photos (tilted, blurred, tinted, noisy): 7 of 10 found 1st across
+1999–2024 cards; misses never claimed "Found it". A scan takes ~6–15s, almost all of it the
+free API. Old matches are cleared as soon as a new read starts, so a stale card can't be tapped.
+`.scan` needs `flex-wrap:nowrap` (wrap stretches the result grid rows to ~1500px). All modals are
+centred with `.modal > .sheet{margin:auto}` rather than `align-items:center`, which clipped the top
+of any sheet taller than the screen.
+
 ### Accounts
 
 **Making a collection requires signing in** — the user asked for that explicitly, and for the site
@@ -277,5 +312,6 @@ check it in a browser first, because there's no staging step between a push and 
 Prices stay green (`#7ee38a`) and estimates stay gold; those colours carry meaning.
 
 Same as the browser games: **keep it one self-contained HTML file.** No bundler, no
-package.json, no npm dependency. All card art and set logos are hotlinked from
+package.json, no npm dependency. The one outside script is Tesseract.js for the card scanner,
+pinned and loaded only when the scanner opens — don't load it up front, and don't add others. All card art and set logos are hotlinked from
 `images.pokemontcg.io`.
