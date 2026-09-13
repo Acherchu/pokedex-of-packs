@@ -279,6 +279,13 @@
   .etypes button i{width:14px;height:14px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.45)}
   .etypes button.on{border-color:currentColor;background:rgba(255,255,255,.08)}
 
+  /* ---------- energy tab ---------- */
+  .ekind{display:flex;gap:4px;background:var(--navy);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .ekind button{background:none;border:0;color:var(--dim);font:inherit;font-size:13.5px;font-weight:600;padding:6px 13px;border-radius:8px;cursor:pointer}
+  .ekind button:hover{color:var(--text)}
+  .ekind button.on{background:var(--gold);color:var(--navy)}
+  .etypes button b{font-weight:400;color:var(--dim);font-size:12px}
+
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
   #acct .who{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
@@ -324,6 +331,7 @@
     <nav class="tabs" id="tabs">
       <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
       <button id="tab-cards" onclick="showSearch()">Card search</button>
+      <button id="tab-energy" onclick="showEnergy()">Energy</button>
       <button id="tab-owned" class="extra" onclick="showOwned()">My collection</button>
       <button id="tab-more" class="morebtn" onclick="toggleMore()">View more ›</button>
     </nav>
@@ -714,7 +722,7 @@ function showSearch(){
   renderSearch();
   qIn.focus();
 }
-const TAB_OF = {sets:"tab-packs", set:"tab-packs", search:"tab-cards", owned:"tab-owned"};
+const TAB_OF = {sets:"tab-packs", set:"tab-packs", search:"tab-cards", energy:"tab-energy", owned:"tab-owned"};
 const EXTRA_TABS = ["tab-owned"];
 function setTab(){
   const active = TAB_OF[VIEW];
@@ -722,7 +730,7 @@ function setTab(){
   if(active) document.getElementById(active).classList.add("on");
   if(EXTRA_TABS.indexOf(active) >= 0) openMore(true);   // never hide the section you're in
   sortIn.style.display = VIEW === "sets" ? "" : "none";
-  qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search") ? "" : "none";
+  qIn.style.display = (VIEW === "sets" || VIEW === "set" || VIEW === "search" || VIEW === "energy") ? "" : "none";
 }
 function openMore(yes){
   document.getElementById("tabs").classList.toggle("open", yes);
@@ -736,6 +744,7 @@ function toggleMore(){
 function refreshView(){
   if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
+  else if(VIEW === "energy") drawEnergy();
   else if(VIEW === "set") drawCards();
 }
 function exampleSearch(t){ qIn.value = t; runSearch(t); }
@@ -814,7 +823,7 @@ function renderSearch(){
   if(!searchReady(searchTerm)){
     countEl.textContent = "";
     app.innerHTML = energyBar() + '<div class="hint" style="padding-top:40px"><h3>Find any card ever printed</h3>'
-      + 'Type a name above, pick an energy type, or both. Every printing comes back separately — set, card number and rarity —<br>'
+      + 'Type a name above, pick a Pokémon type, or both. Every printing comes back separately — set, card number and rarity —<br>'
       + 'so you can pick the exact one you own and see what it is worth.'
       + '<div class="egs">'
       + ['Charizard','Pikachu','Umbreon','Mew','Rayquaza','Mr. Mime'].map(n =>
@@ -842,6 +851,104 @@ function renderSearch(){
         : '');
   drawFound();
 }
+/* ---------------- energy tab ----------------
+   Energy cards on their own, so finding what one is worth (or adding it to the collection) isn't
+   a hunt through every Pokémon. All Energy cards (~400) load in one go through the saved-copy
+   cache, then every filter is instant and local:
+   - Basic / Special;
+   - energy type. Basic Energy cards carry no `types` in the API, so the type also matches the
+     card's name ("Fire Energy", "Basic Fire Energy", "Unit Energy FightingDarknessFairy");
+   - what's typed in the search box (name, or set name);
+   - sort: newest, price high→low, price low→high.
+   Each type button shows how many cards it would leave, given the other filters. */
+const ENERGY_TYPES = ["Grass","Fire","Water","Lightning","Psychic","Fighting","Darkness","Metal","Fairy","Dragon","Colorless"];
+let energyCards = null, energyType = "", energyKind = "", energySort = "new", energyBusy = false;
+function showEnergy(){
+  closeCard();
+  if(VIEW !== "energy") qIn.value = "";
+  VIEW = "energy"; setTab();
+  qIn.placeholder = "Search energy cards…";
+  if(energyCards) renderEnergy();
+  else loadEnergy();
+}
+async function loadEnergy(){
+  if(energyBusy) return;
+  energyBusy = true;
+  app.innerHTML = '<div class="msg"><div class="spinner"></div>Gathering every Energy card…</div>';
+  try{
+    const cards = await cachedFetch("energy:all", fetchEnergyCards, fresh => {
+      energyCards = fresh; remember(fresh);
+      if(VIEW === "energy") keepScroll(renderEnergy);
+    });
+    energyCards = cards; remember(cards);
+    if(VIEW === "energy") renderEnergy();
+  }catch(e){
+    if(VIEW === "energy") app.innerHTML = '<div class="msg">' + esc(e.message)
+      + '<br><br><button class="btn-gold" onclick="loadEnergy()">Try again</button></div>';
+  }
+  energyBusy = false;
+}
+async function fetchEnergyCards(){
+  let all = [], page = 1;
+  while(true){
+    const d = await getJSON(API + "/cards?q=" + encodeURIComponent("supertype:Energy")
+      + "&orderBy=-set.releaseDate,number&pageSize=250&page=" + page);
+    all = all.concat(d.data);
+    if(d.data.length < 250) break;
+    page++;
+  }
+  return all;
+}
+function energyIsType(c, t){
+  return (c.types || []).includes(t) || c.name.toLowerCase().includes(t.toLowerCase());
+}
+function energyIsKind(c, k){ return !k || (c.subtypes || []).includes(k); }
+function energyMatches(c, opts){
+  const term = qIn.value.trim().toLowerCase();
+  return energyIsKind(c, opts.kind) && (!opts.type || energyIsType(c, opts.type))
+    && (!term || c.name.toLowerCase().includes(term) || ((c.set && c.set.name) || "").toLowerCase().includes(term));
+}
+function pickEnergyType(t){ energyType = energyType === t ? "" : t; renderEnergy(); }
+function pickEnergyKind(k){ energyKind = k; renderEnergy(); }
+function renderEnergy(){
+  if(!energyCards) return;
+  const kinds = [["", "All energy"], ["Basic", "Basic"], ["Special", "Special"]];
+  const count = t => energyCards.filter(c => energyMatches(c, {kind: energyKind, type: t})).length;
+  app.innerHTML =
+      '<div class="etypes">'
+    +   '<button class="' + (energyType ? "" : "on") + '" style="' + (energyType ? "" : "color:var(--gold)") + '" onclick="pickEnergyType(\'\')">All types <b>' + count("") + '</b></button>'
+    +   ENERGY_TYPES.map(t => {
+          const n = count(t);
+          return '<button class="' + (t === energyType ? "on" : "") + '" style="' + (t === energyType ? "color:" + TYPE_COLORS[t] : "") + (n || t === energyType ? "" : ";opacity:.45") + '"'
+            + ' onclick="pickEnergyType(\'' + t + '\')"><i style="background:' + TYPE_COLORS[t] + '"></i>' + t + ' <b>' + n + '</b></button>';
+        }).join("")
+    + '</div>'
+    + '<div class="tools">'
+    +   '<div class="ekind">' + kinds.map(k => '<button class="' + (k[0] === energyKind ? "on" : "") + '" onclick="pickEnergyKind(\'' + k[0] + '\')">' + k[1] + '</button>').join("") + '</div>'
+    +   '<select id="esort" aria-label="Sort energy cards" onchange="energySort=this.value;drawEnergy()">'
+    +     [["new", "Newest first"], ["hi", "Price: high to low"], ["lo", "Price: low to high"]]
+            .map(o => '<option value="' + o[0] + '"' + (o[0] === energySort ? " selected" : "") + '>' + o[1] + '</option>').join("")
+    +   '</select>'
+    +   '<span class="count" id="eshown"></span>'
+    + '</div>'
+    + '<div class="found" id="efound"></div>';
+  drawEnergy();
+}
+function drawEnergy(){
+  const el = document.getElementById("efound");
+  if(!el || !energyCards) return;
+  let list = energyCards.filter(c => energyMatches(c, {kind: energyKind, type: energyType}));
+  if(energySort !== "new"){
+    const v = c => { const r = cardValue(c); return r ? r.v : null; };
+    list = list.slice().sort((a, b) => (v(a) == null) - (v(b) == null) || (energySort === "hi" ? v(b) - v(a) : v(a) - v(b)));
+  }
+  const label = [energyKind, energyType].filter(Boolean).join(" ");
+  document.getElementById("eshown").textContent = list.length + " " + (label ? label + " " : "") + "energy card" + (list.length === 1 ? "" : "s");
+  countEl.textContent = list.length + " of " + energyCards.length;
+  el.innerHTML = list.map(findTile).join("")
+    || '<div class="msg" style="grid-column:1/-1">No energy cards match — try another type, All energy, or clear the search box.</div>';
+}
+
 function energyBar(){
   return '<div class="etypes">'
     + '<button class="' + (searchType ? "" : "on") + '" style="' + (searchType ? "" : "color:var(--gold)") + '" onclick="pickEnergy(\'\')">All types</button>'
@@ -1002,7 +1109,7 @@ function setTile(s){
 /* ---------------- set detail ---------------- */
 async function openSet(id){
   const s = SETS.find(x => x.id === id); if(!s) return;
-  if(VIEW === "search") qIn.value = "";   // that box held a card name, not a set filter
+  if(VIEW === "search" || VIEW === "energy") qIn.value = "";   // that box held a card name, not a set filter
   current = s; VIEW = "set";
   setTab();
   qIn.placeholder = "Search sets…";
@@ -1688,14 +1795,14 @@ document.addEventListener("keydown", e => {
   if(e.key === "Escape"){
     if(document.getElementById("signin")) closeSignIn(true);
     else if(document.getElementById("modal")) closeCard();
-    else if(VIEW === "set" || VIEW === "search") showSets();
+    else if(VIEW === "set" || VIEW === "search" || VIEW === "energy") showSets();
   }
 });
 
 /* ---------------- misc ---------------- */
 function showSets(){
   closeCard();
-  if(VIEW === "search") qIn.value = "";   // the set list filters on the same box
+  if(VIEW === "search" || VIEW === "energy") qIn.value = "";   // the set list filters on the same box
   qIn.placeholder = "Search sets…";
   VIEW = "sets";
   setTab();
@@ -1710,6 +1817,7 @@ function fmtDate(d){
 }
 qIn.addEventListener("input", () => {
   if(VIEW === "search") onSearchTyping();
+  else if(VIEW === "energy") drawEnergy();
   else if(VIEW === "sets") renderSets();
   else showSets();                       // typing while inside a set backs out to the set list
 });

@@ -15,7 +15,10 @@ and current sealed booster-pack price. Sort by newest, oldest, priciest pack, A�
 Open a set for its full card list with rarity and type filters, and a booster-pack simulator that
 deals you a realistic 9-card pull.
 
-**Card search** — search every card ever printed by name, pick an energy type (Fire, Water,
+**Energy** — every Energy card in one place. Pick the energy type (Fire, Water…), Basic or
+Special, search by name or set, and sort by price.
+
+**Card search** — search every card ever printed by name, pick a Pokémon type (Fire, Water,
 Psychic…), or both. Each *printing* comes back separately
 with its set, card number, rarity and price, because the same Charizard exists in dozens of sets
 at wildly different values.

@@ -11,7 +11,9 @@ in it; click a card for the full card detail and market prices.
 Sections, switched from the header:
 
 - **Packs** — the set grid, and one set's cards.
-- **Card search** — search every card ever printed by name and/or **energy type**. Each *printing*
+- **Energy** — every Energy card (~394), filtered by energy type, Basic / Special, name or set,
+  and sorted by price — for finding what an Energy card is worth or adding it to the collection.
+- **Card search** — search every card ever printed by name and/or **Pokémon type**. Each *printing*
   comes back as its own result (set, number, rarity, price), and the card sheet has a printing
   picker so you can pin down the exact copy you own.
 - **View more ›** — not a dropdown. It reveals the remaining tabs *in the same row*, styled
@@ -176,6 +178,25 @@ for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a r
 All modals are centred with `.modal > .sheet{margin:auto}` rather than `align-items:center`, which
 clipped the top of any sheet taller than the screen (like the card sheet) where it couldn't be
 scrolled back to.
+
+### Energy tab
+
+The user asked for "a tab for specifically finding energies" where you pick the energy type to
+narrow it down. `showEnergy()` (header tab `tab-energy`, `VIEW = "energy"`) loads **all** Energy
+cards once — `supertype:Energy`, 2 pages of 250 — through `cachedFetch("energy:all")`, then every
+filter is local and instant (`energyMatches` / `drawEnergy`):
+
+- type buttons with live counts (`ENERGY_TYPES`); a type with 0 matches is dimmed but clickable;
+- All energy / Basic / Special (`subtypes`);
+- the header search box filters by card name or set name;
+- sort: newest, price high→low, low→high (unpriced last).
+
+**Basic Energy cards have no `types` in the API** (237 of 394 have none), so `energyIsType` also
+matches the type word in the name — "Fire Energy", "Basic Fire Energy", "Unit Energy
+GrassFireWater", "Blend Energy GrassFirePsychicDarkness". Rainbow / Prism Energy name no type, so
+they only appear under All types. Tiles are the shared `findTile`, so Add to collection and the
+card sheet work the same as in Card search. Card search's own type buttons are *Pokémon* types
+(Energy cards have no types, so they drop out there once a type is picked).
 
 ### No camera
 
