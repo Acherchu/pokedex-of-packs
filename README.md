@@ -31,15 +31,18 @@ TCGplayer, so those cards fall back to their European market price, or to what t
 typically sells for in recent sets. Every estimate is clearly marked — a `~`, an amber colour,
 an `EST` tag, and a note in the card sheet explaining exactly where the figure came from.
 
-**Deck builder** (under *View more*) — pick a Pokémon type, add what you like to a deck, tick off
-the cards you already own, name it and save it. A saved deck keeps every card in it — art, set,
-number and value — and tells you which ones you still need to go and find. Saved decks and your
-collection live in your own browser; there's no account and nothing is uploaded.
+**My collection** (under *View more*) — an online way to keep track of your Pokémon. Hit
+*+ Add to collection* on any card search result, or open any card and hit *✓ I have this card*.
+Everything you add collects in one place with its total value, and you can search it. Click a
+card in your collection to record which page and pocket it's in in your real binder.
+
+You have to **sign in with Google** to make a collection, so it can be saved to your account and
+follow you to any phone or computer. Browsing sets, prices and card search never needs an account.
 
 ## Running it
 
-It's one HTML file with no build step and no dependencies — open `index.html` in a browser and it
-works. Card data is fetched live from the Pokémon TCG API, so it needs an internet connection.
+It's one HTML file with no build step — open `index.html` in a browser and it works. Signing in
+uses Firebase and needs the page served from a web address rather than opened as a file. Card data is fetched live from the Pokémon TCG API, so it needs an internet connection.
 
 ## Data
 

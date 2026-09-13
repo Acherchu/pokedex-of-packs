@@ -6,16 +6,17 @@
 <title>Pokédex of Packs — Every Pokémon TCG Set</title>
 <style>
   :root{
-    --bg:#0d1117; --panel:#171f2b; --panel2:#1d2735;
-    --line:#2a3546; --text:#e8eef7; --dim:#93a3b8; --gold:#ffcb05; --blue:#3b6ef5;
-    --red:#ee1515; --shadow:0 10px 30px rgba(0,0,0,.45);
+    /* Pokémon blue and yellow */
+    --bg:#0a1a3f; --panel:#12295c; --panel2:#183474;
+    --line:#2b4a8f; --text:#eef3ff; --dim:#a9bbe0; --gold:#ffcb05; --blue:#3d7dca;
+    --navy:#0a1a3f; --red:#ee1515; --shadow:0 10px 30px rgba(2,8,24,.55);
   }
   *{box-sizing:border-box}
   html,body{margin:0;padding:0}
   body{
     background:
-      radial-gradient(900px 500px at 15% -10%, #1b2a4a 0%, transparent 60%),
-      radial-gradient(800px 500px at 100% 0%, #3a1d2b 0%, transparent 55%),
+      radial-gradient(900px 500px at 15% -10%, #2155b4 0%, transparent 60%),
+      radial-gradient(800px 500px at 100% 0%, rgba(255,203,5,.16) 0%, transparent 55%),
       var(--bg);
     color:var(--text);
     font:15px/1.5 "Segoe UI", system-ui, -apple-system, Roboto, sans-serif;
@@ -27,30 +28,30 @@
   /* ---------- header ---------- */
   header.top{
     position:sticky;top:0;z-index:50;
-    background:rgba(13,17,23,.85);backdrop-filter:blur(10px);
-    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,rgba(36,85,176,.96),rgba(24,63,138,.96));backdrop-filter:blur(10px);
+    border-bottom:3px solid var(--gold);
   }
   .top-in{max-width:1400px;margin:0 auto;padding:14px 20px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
   .logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;letter-spacing:.5px;cursor:pointer;user-select:none}
   .pokeball{width:26px;height:26px;border-radius:50%;background:linear-gradient(180deg,var(--red) 0 47%,#fff 47% 53%,#f2f2f2 53% 100%);
     border:2px solid #0a0a0a;position:relative;flex:0 0 auto;box-shadow:0 2px 8px rgba(238,21,21,.35)}
   .pokeball:after{content:"";position:absolute;inset:0;margin:auto;width:8px;height:8px;border-radius:50%;background:#fff;border:2px solid #0a0a0a}
-  .logo span{background:linear-gradient(90deg,var(--gold),#ffe57a);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .logo span{color:var(--gold);text-shadow:2px 2px 0 var(--navy),-1px -1px 0 var(--navy),1px -1px 0 var(--navy),-1px 1px 0 var(--navy)}
   .grow{flex:1 1 auto}
   input[type=search], select{
     background:var(--panel);border:1px solid var(--line);color:var(--text);
     border-radius:10px;padding:9px 12px;font-size:14px;outline:none;font-family:inherit;
   }
   input[type=search]{min-width:230px}
-  input[type=search]:focus, select:focus{border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,110,245,.2)}
+  input[type=search]:focus, select:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,203,5,.22)}
   .count{color:var(--dim);font-size:13px;white-space:nowrap}
-  .tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:11px;padding:3px}
+  .tabs{display:flex;gap:4px;background:var(--navy);border:1px solid var(--line);border-radius:11px;padding:3px}
   .tabs button{
     background:none;border:0;color:var(--dim);font:inherit;font-size:14px;font-weight:600;
     padding:6px 14px;border-radius:8px;cursor:pointer;
   }
   .tabs button:hover{color:var(--text)}
-  .tabs button.on{background:var(--panel2);color:var(--gold);box-shadow:0 1px 4px rgba(0,0,0,.4)}
+  .tabs button.on{background:var(--gold);color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.4)}
 
   /* ---------- card search ---------- */
   .hint{color:var(--dim);text-align:center;padding:70px 20px}
@@ -113,7 +114,7 @@
     padding:10px 13px;margin-bottom:12px;font-size:12.5px;color:#e3d9b4;line-height:1.5;
   }
   .warn b{color:var(--gold);display:block;margin-bottom:3px}
-  .card .pr.est{color:var(--gold);background:rgba(0,0,0,.8)}
+  .card .pr.est{color:var(--gold);background:rgba(6,18,46,.9)}
   .find .frow .pp.est{color:var(--gold);font-size:14px}
   .find .frow .pp.est .tag{font-size:9px;padding:0 4px;margin-left:2px}
   .legend{
@@ -129,69 +130,60 @@
   .tabs .morebtn{color:var(--gold);opacity:.85}
   .tabs .morebtn:hover{opacity:1;color:var(--gold)}
 
-  /* ---------- deck builder ---------- */
-  .types{display:flex;gap:8px;flex-wrap:wrap;margin:22px 0 4px}
-  .types button{
-    display:flex;align-items:center;gap:7px;background:var(--panel);border:1px solid var(--line);
-    color:var(--text);font:inherit;font-size:13.5px;font-weight:600;padding:8px 15px;
-    border-radius:999px;cursor:pointer;
-  }
-  .types button:hover{border-color:var(--dim)}
-  .types button i{width:13px;height:13px;border-radius:50%;display:block;border:1px solid rgba(0,0,0,.45)}
-  .types button.on{border-color:currentColor;background:rgba(255,255,255,.07)}
-  .deckgrid{padding-bottom:150px}
+  /* ---------- owning ---------- */
   .addbar{display:flex;gap:6px;margin-top:8px}
+  .find{display:flex;flex-direction:column}
+  .find .addbar{margin-top:auto;padding-top:8px}   /* buttons line up even when a rarity wraps */
   .addbar button{
     flex:1;background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;
     font-size:12.5px;font-weight:700;padding:7px 4px;border-radius:8px;cursor:pointer;
   }
-  .addbar button.add:hover{border-color:var(--gold);color:var(--gold)}
-  .addbar button.own{flex:0 0 auto;padding:7px 10px}
   .addbar button.own.yes{border-color:#7ee38a;color:#7ee38a;background:rgba(126,227,138,.10)}
-  .indeck{
-    position:absolute;top:6px;left:6px;background:var(--gold);color:#20180a;font-weight:800;
-    font-size:11px;border-radius:6px;padding:1px 7px;
+  .ownbtn{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);font:inherit;
+    font-size:13px;font-weight:700;padding:6px 12px;border-radius:9px;cursor:pointer;
+  }
+  .ownbtn:hover{border-color:#7ee38a;color:#7ee38a}
+  .ownbtn.yes{border-color:#7ee38a;color:#7ee38a;background:rgba(126,227,138,.10)}
+  .addbar button.own:hover{border-color:#7ee38a;color:#7ee38a}
+  .tagline{color:var(--gold);font-weight:600;font-size:15px;margin:-2px 0 12px}
+  .find .fslot{color:var(--gold);font-size:11.5px;font-weight:600;margin-top:3px}
+
+  /* ---------- binder slot picker (card sheet) ---------- */
+  .binder{margin-bottom:6px}
+  .binder .bstat{font-size:13px;color:var(--dim);margin-bottom:9px}
+  .binder .bstat b{color:var(--gold)}
+  .binder .bctl{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-bottom:10px;font-size:13px;color:var(--dim)}
+  .binder .bctl input[type=number]{
+    width:64px;background:var(--panel);border:1px solid var(--line);color:var(--text);
+    border-radius:8px;padding:5px 7px;font:inherit;font-size:13px;
+  }
+  .binder .bctl select{padding:5px 8px;font-size:13px}
+  .binder .bnav{
+    background:var(--panel2);border:1px solid var(--line);color:var(--text);border-radius:8px;
+    width:30px;height:30px;cursor:pointer;font:inherit;font-size:16px;line-height:1;
+  }
+  .binder .bnav:hover:not(:disabled){border-color:var(--gold);color:var(--gold)}
+  .binder .bnav:disabled{opacity:.4;cursor:default}
+  .pockets{display:grid;gap:6px;max-width:300px;padding:8px;background:var(--navy);border:1px solid var(--line);border-radius:10px}
+  .pocket{
+    aspect-ratio:245/342;border-radius:6px;border:1px dashed var(--line);background:rgba(255,255,255,.03);
+    color:var(--dim);font:inherit;font-size:13px;font-weight:700;padding:0;position:relative;overflow:hidden;
+    display:flex;align-items:center;justify-content:center;
+  }
+  button.pocket{cursor:pointer}
+  button.pocket:hover{border:1px solid var(--gold);color:var(--gold)}
+  .pocket img{width:100%;height:100%;object-fit:cover;display:block}
+  .pocket.taken{border-style:solid;opacity:.5;cursor:not-allowed}
+  .pocket.here{border:2px solid var(--gold);box-shadow:0 0 0 3px rgba(255,203,5,.25)}
+  .pocket.here span{
+    position:absolute;bottom:4px;left:50%;transform:translateX(-50%);background:var(--gold);color:var(--navy);
+    font-size:10px;font-weight:800;border-radius:4px;padding:0 5px;
   }
   .ownmark{
     position:absolute;top:6px;right:6px;background:rgba(126,227,138,.92);color:#0c2412;
     font-weight:900;font-size:11px;border-radius:50%;width:19px;height:19px;line-height:19px;text-align:center;
   }
-
-  /* ---------- deck tray ---------- */
-  .tray{
-    position:fixed;left:0;right:0;bottom:0;z-index:60;background:rgba(19,26,36,.97);
-    backdrop-filter:blur(10px);border-top:1px solid var(--line);padding:10px 20px 12px;
-  }
-  .tray-in{max-width:1400px;margin:0 auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-  .tray input[type=text]{
-    background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:9px;
-    padding:8px 11px;font:inherit;font-size:14px;min-width:190px;
-  }
-  .tray .tot{font-size:14px;color:var(--dim);white-space:nowrap}
-  .tray .tot b{color:var(--text);font-size:19px;font-weight:800}
-  .tray .strip{display:flex;gap:6px;overflow-x:auto;flex:1 1 260px;padding:3px 0;min-height:56px}
-  .tray .strip .mini{position:relative;flex:0 0 auto;cursor:pointer}
-  .tray .strip .mini img{height:50px;border-radius:4px;display:block}
-  .tray .strip .mini b{
-    position:absolute;right:-3px;top:-4px;background:var(--gold);color:#20180a;border-radius:50%;
-    min-width:17px;height:17px;font-size:10px;line-height:17px;text-align:center;font-weight:800;
-  }
-  .tray .strip .empty{color:var(--dim);font-size:13px;align-self:center;font-style:italic}
-
-  /* ---------- decks ---------- */
-  .decks{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;margin-top:22px}
-  .deckcard{
-    background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
-    border-radius:14px;padding:16px;cursor:pointer;transition:transform .15s,border-color .15s;
-  }
-  .deckcard:hover{transform:translateY(-3px);border-color:var(--gold)}
-  .deckcard h3{margin:0 0 4px;font-size:18px}
-  .deckcard .dmeta{color:var(--dim);font-size:12.5px}
-  .deckcard .fan{display:flex;margin:12px 0 4px;height:62px}
-  .deckcard .fan img{height:62px;border-radius:4px;margin-right:-26px;border:1px solid rgba(0,0,0,.5)}
-  .rowbtns{display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 0}
-  .need{color:#ffb4b4}
-  .havepct{color:#7ee38a}
 
   /* ---------- set grid ---------- */
   .sets{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:16px;margin-top:28px}
@@ -208,7 +200,7 @@
   .set .nm img{width:16px;height:16px;object-fit:contain}
   .set .ser{color:var(--dim);font-size:11px;letter-spacing:1px;text-transform:uppercase;margin-top:-6px}
   .set .meta{color:var(--dim);font-size:12px;display:flex;justify-content:center;gap:8px}
-  .set .meta b{color:#cbd6e6;font-weight:600}
+  .set .meta b{color:#d6e2ff;font-weight:600}
   .set .val{
     margin-top:auto;padding-top:10px;border-top:1px solid var(--line);font-size:13px;color:var(--dim);
   }
@@ -230,7 +222,7 @@
   .stats b{color:var(--text);display:block;font-size:15px;font-weight:700}
   .tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin:18px 0 4px}
   .btn-gold{
-    background:linear-gradient(180deg,#ffd633,#f0b90b);color:#20180a;border:0;border-radius:10px;
+    background:linear-gradient(180deg,#ffd633,#f0b90b);color:var(--navy);border:0;border-radius:10px;
     padding:10px 16px;font-weight:800;cursor:pointer;font-family:inherit;font-size:14px;
     box-shadow:0 4px 14px rgba(240,185,11,.28);
   }
@@ -243,17 +235,17 @@
   .card img{width:100%;height:100%;object-fit:cover;display:block}
   .card:hover{transform:translateY(-5px) scale(1.03);z-index:2;box-shadow:var(--shadow)}
   .card .no{
-    position:absolute;left:6px;bottom:6px;background:rgba(0,0,0,.72);border-radius:6px;
+    position:absolute;left:6px;bottom:6px;background:rgba(6,18,46,.85);border-radius:6px;
     padding:2px 6px;font-size:11px;color:#fff;opacity:0;transition:opacity .15s;
   }
   .card:hover .no{opacity:1}
   .card .pr{
-    position:absolute;right:6px;bottom:6px;background:rgba(0,0,0,.78);border-radius:6px;
+    position:absolute;right:6px;bottom:6px;background:rgba(6,18,46,.88);border-radius:6px;
     padding:2px 6px;font-size:11px;font-weight:700;color:#7ee38a;
   }
 
   /* ---------- modal ---------- */
-  .modal{position:fixed;inset:0;z-index:100;background:rgba(5,8,13,.82);backdrop-filter:blur(6px);
+  .modal{position:fixed;inset:0;z-index:100;background:rgba(4,12,32,.82);backdrop-filter:blur(6px);
     display:flex;align-items:center;justify-content:center;padding:24px;overflow:auto}
   .sheet{
     background:linear-gradient(180deg,var(--panel2),var(--panel));border:1px solid var(--line);
@@ -287,6 +279,38 @@
   .pull{animation:pop .45s cubic-bezier(.2,1.6,.4,1) both}
   @keyframes pop{from{opacity:0;transform:translateY(24px) scale(.9) rotate(-3deg)}to{opacity:1;transform:none}}
   footer{color:var(--dim);font-size:12px;text-align:center;padding:40px 0 10px}
+
+  /* ---------- accounts ---------- */
+  #acct{display:flex;align-items:center;gap:8px}
+  #acct .who{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
+  #acct .who img{width:26px;height:26px;border-radius:50%;border:2px solid var(--gold)}
+  #acct .btn-gold{padding:7px 14px;font-size:13px}
+  #acct .back{padding:6px 11px;font-size:13px}
+  .signin{max-width:430px;flex-direction:column;align-items:center;text-align:center;gap:0;padding:30px 28px 24px}
+  .signin .pokeball{width:52px;height:52px;margin-bottom:14px}
+  .signin .pokeball:after{width:15px;height:15px}
+  .signin h2{margin:0 0 10px;font-size:24px}
+  .signin p{color:var(--dim);margin:0 0 20px;line-height:1.55}
+  .signin p b{color:var(--gold)}
+  .signin small{color:var(--dim);margin-top:14px;font-size:12px}
+  .gbtn{
+    display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:0;border-radius:999px;
+    padding:11px 22px 11px 14px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    box-shadow:0 4px 14px rgba(0,0,0,.35);
+  }
+  .gbtn:hover{filter:brightness(.95)}
+  .hint .egs button.gbtn{background:#fff;color:#1f1f1f;border:0;padding:11px 22px 11px 14px;font-size:15px}   /* beat the pill-button style */
+  .hint .egs button.gbtn:hover{color:#1f1f1f}
+  .gbtn i{
+    width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;
+    font-weight:900;color:#fff;background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0);
+  }
+  .toast{
+    position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:200;opacity:0;pointer-events:none;
+    background:var(--panel2);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:10px 16px;
+    font-size:14px;box-shadow:var(--shadow);transition:opacity .2s,transform .2s;max-width:calc(100% - 40px);
+  }
+  .toast.on{opacity:1;transform:translate(-50%,0)}
 </style>
 </head>
 <body>
@@ -297,8 +321,6 @@
     <nav class="tabs" id="tabs">
       <button id="tab-packs" class="on" onclick="showSets()">Packs</button>
       <button id="tab-cards" onclick="showSearch()">Card search</button>
-      <button id="tab-deck"  class="extra" onclick="showBuilder()">Deck builder</button>
-      <button id="tab-decks" class="extra" onclick="showDecks()">My decks</button>
       <button id="tab-owned" class="extra" onclick="showOwned()">My collection</button>
       <button id="tab-more" class="morebtn" onclick="toggleMore()">View more ›</button>
     </nav>
@@ -312,6 +334,7 @@
       <option value="size">Most cards</option>
     </select>
     <span class="count" id="count"></span>
+    <div id="acct"></div>
   </div>
 </header>
 
@@ -321,6 +344,11 @@
 
 <footer>Cards &amp; images from the <a href="https://pokemontcg.io" target="_blank" rel="noopener">Pokémon TCG API</a>; sealed pack prices are TCGplayer market data via <a href="https://tcgcsv.com" target="_blank" rel="noopener">tcgcsv.com</a>, as of <span id="snap"></span>. Card images © The Pokémon Company.</footer>
 
+<!-- Firebase: Google sign-in + Firestore, only for saving collections. The rest of the site
+     works without it, so a failed load just leaves the collection unavailable. -->
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <script>
 const API = "https://api.pokemontcg.io/v2";
 
@@ -413,18 +441,17 @@ async function loadCards(setId){
 }
 
 /* ---------------- saved stuff ----------------
-   Decks and ticked-off cards live in localStorage, on this browser only. Both store a small
-   snapshot of every card (name, set, number, art, price) so a saved deck still renders in full
-   without re-fetching 60 cards — the whole point is being able to see what to go and pull. */
+   Your collection is saved to your account (see "accounts" below). Each card in it stores a small
+   snapshot (name, set, number, art, price) so the collection renders in full without re-fetching
+   every card. localStorage is only used for the sets cache, and to move a collection made before
+   accounts existed into the account the first time someone signs in. */
 const store = {
   get(k, fallback){
     try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
   },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-let OWNED = store.get("pkOwned", {});      // cardId -> snapshot
-let DECKS = store.get("pkDecks", []);      // [{id, name, cards:[{id, qty, snap}], saved}]
-let deck  = store.get("pkDraft", {name:"", cards:[]});   // the deck being built
+let OWNED = {};                             // cardId -> snapshot, loaded from your account
 
 function snapOf(c){
   const r = cardValue(c);
@@ -438,84 +465,105 @@ function snapOf(c){
     v: r ? +r.v.toFixed(2) : null, est: !!(r && r.est)
   };
 }
-function snapFor(id, fallback){
-  const c = CARDS.get(id);
-  return c ? snapOf(c) : fallback;
-}
-
 /* --- owning --- */
 function owns(id){ return !!OWNED[id]; }
 function toggleOwn(id, ev){
   if(ev) ev.stopPropagation();               // the tile behind opens the card sheet
+  if(needSignIn(id)) return;                 // no account, nowhere to save it
   if(OWNED[id]) delete OWNED[id];
   else{
     const c = CARDS.get(id);
     if(!c) return;
     OWNED[id] = snapOf(c);
   }
-  store.set("pkOwned", OWNED);
+  saveCollection();
   refreshView();
+  const b = document.getElementById("ownbtn");   // the card sheet, if it's open
+  if(b) b.outerHTML = ownBtn(id);
+  redrawBinder(id);
+}
+function ownBtn(id){
+  const have = owns(id);
+  return '<button class="ownbtn' + (have ? " yes" : "") + '" id="ownbtn" onclick="toggleOwn(\'' + id + '\',event)">'
+    + (have ? "✓ In your collection" : "✓ I have this card") + '</button>';
 }
 
-/* --- the deck being built --- */
-function inDeck(id){ const e = deck.cards.find(x => x.id === id); return e ? e.qty : 0; }
-function deckCount(){ return deck.cards.reduce((n, e) => n + e.qty, 0); }
-function addToDeck(id, ev){
-  if(ev) ev.stopPropagation();
-  const c = CARDS.get(id); if(!c) return;
-  const e = deck.cards.find(x => x.id === id);
-  if(e) e.qty++;
-  else deck.cards.push({id:id, qty:1, snap:snapOf(c)});
-  store.set("pkDraft", deck);
+/* --- binder slots ---
+   Where a card sits in your real binder: a page and a pocket, kept on its OWNED entry as
+   slot:{p, s}. Pockets count left to right, top to bottom. One card per pocket — pockets that
+   already hold a card show it and can't be picked. Taking a card out of the collection drops its
+   slot with it. */
+let BINDER = 9;                             // pockets per page: 4, 9 or 12 (saved to your account)
+let binderPage = 1;                         // the page the card sheet's picker is showing
+const BINDER_COLS = {4:2, 9:3, 12:4};
+function slotLabel(sl){ return sl ? "Page " + sl.p + " · Slot " + sl.s : ""; }
+function binderBlock(id){
+  const e = OWNED[id];
+  if(!e) return '<div id="binderpane"></div>';   // not in the collection — nothing to place
+  const here = e.slot, taken = {};
+  for(const k in OWNED){
+    const o = OWNED[k];
+    if(k !== id && o.slot && o.slot.p === binderPage) taken[o.slot.s] = o;
+  }
+  let cells = "";
+  for(let i = 1; i <= BINDER; i++){
+    const mine = here && here.p === binderPage && here.s === i;
+    if(taken[i]){
+      cells += '<div class="pocket taken" title="' + esc(taken[i].n) + ' is in this pocket">'
+        + '<img src="' + taken[i].img + '" alt="' + esc(taken[i].n) + '"></div>';
+    }else{
+      cells += '<button class="pocket' + (mine ? " here" : "") + '" title="' + (mine ? "This card's pocket" : "Put it in slot " + i) + '"'
+        + ' onclick="setSlot(\'' + id + '\',' + i + ')">'
+        + (mine ? '<img src="' + e.img + '" alt=""><span>Here</span>' : i) + '</button>';
+    }
+  }
+  return '<div class="blk binder" id="binderpane"><h4>Binder slot</h4>'
+    + '<div class="bstat">' + (here
+        ? 'In your binder at <b>' + slotLabel(here) + '</b>'
+        : 'Not in your binder yet — pick an empty pocket.') + '</div>'
+    + '<div class="bctl">'
+    +   '<button class="bnav" onclick="binderTo(\'' + id + '\',' + (binderPage - 1) + ')"' + (binderPage <= 1 ? " disabled" : "") + ' title="Previous page">‹</button>'
+    +   'Page <input type="number" min="1" value="' + binderPage + '" onchange="binderTo(\'' + id + '\',this.value)">'
+    +   '<button class="bnav" onclick="binderTo(\'' + id + '\',' + (binderPage + 1) + ')" title="Next page">›</button>'
+    +   '<select title="Pockets per binder page" onchange="setBinderSize(\'' + id + '\',this.value)">'
+    +     [4, 9, 12].map(n => '<option value="' + n + '"' + (n === BINDER ? " selected" : "") + '>' + n + '-pocket pages</option>').join("")
+    +   '</select>'
+    +   (here ? '<button class="back" style="padding:5px 10px;font-size:13px" onclick="clearSlot(\'' + id + '\')">Remove from slot</button>' : '')
+    + '</div>'
+    + '<div class="pockets" style="grid-template-columns:repeat(' + (BINDER_COLS[BINDER] || 3) + ',1fr)">' + cells + '</div>'
+    + '</div>';
+}
+function redrawBinder(id){
+  const el = document.getElementById("binderpane");
+  if(el) el.outerHTML = binderBlock(id);
+}
+function setSlot(id, n){
+  const e = OWNED[id]; if(!e) return;
+  if(needSignIn()) return;
+  e.slot = {p: binderPage, s: n};
+  saveCollection();
+  redrawBinder(id);
+  refreshView();                            // the collection tile shows the slot too
+}
+function clearSlot(id){
+  const e = OWNED[id]; if(!e) return;
+  if(needSignIn()) return;
+  delete e.slot;
+  saveCollection();
+  redrawBinder(id);
   refreshView();
 }
-function dropFromDeck(id, ev){
-  if(ev) ev.stopPropagation();
-  const i = deck.cards.findIndex(x => x.id === id);
-  if(i < 0) return;
-  if(deck.cards[i].qty > 1) deck.cards[i].qty--;
-  else deck.cards.splice(i, 1);
-  store.set("pkDraft", deck);
-  refreshView();
+function binderTo(id, page){
+  binderPage = Math.max(1, parseInt(page, 10) || 1);
+  redrawBinder(id);
 }
-function clearDeck(){
-  if(!deck.cards.length) return;
-  if(!confirm("Empty this deck? Saved decks aren't affected.")) return;
-  deck = {name:deck.name, cards:[]};
-  store.set("pkDraft", deck);
-  refreshView();
+function setBinderSize(id, n){
+  if(needSignIn()) return;
+  BINDER = BINDER_COLS[+n] ? +n : 9;
+  saveCollection();
+  redrawBinder(id);
 }
-function saveDeck(){
-  if(!deck.cards.length){ alert("Add some cards first."); return; }
-  const nameIn = document.getElementById("deckname");
-  const name = ((nameIn && nameIn.value) || deck.name || "").trim() || "Untitled deck";
-  DECKS.unshift({
-    id: "d" + Date.now(),
-    name: name,
-    cards: deck.cards.map(e => ({id:e.id, qty:e.qty, snap:snapFor(e.id, e.snap)})),
-    saved: new Date().toISOString().slice(0,10)
-  });
-  store.set("pkDecks", DECKS);
-  deck = {name:"", cards:[]};
-  store.set("pkDraft", deck);
-  showDecks();
-}
-function deleteDeck(id, ev){
-  if(ev) ev.stopPropagation();
-  const d = DECKS.find(x => x.id === id);
-  if(!d || !confirm('Delete "' + d.name + '"? This cannot be undone.')) return;
-  DECKS = DECKS.filter(x => x.id !== id);
-  store.set("pkDecks", DECKS);
-  refreshView();
-}
-function editDeck(id){
-  const d = DECKS.find(x => x.id === id); if(!d) return;
-  if(deck.cards.length && !confirm("This replaces the deck you're currently building. Continue?")) return;
-  deck = {name:d.name, cards:d.cards.map(e => ({id:e.id, qty:e.qty, snap:e.snap}))};
-  for(const e of deck.cards) if(e.snap) CARDS.set(e.id, CARDS.get(e.id) || snapToCard(e.snap));
-  store.set("pkDraft", deck);
-  showBuilder();
-}
+
 // a saved snapshot is enough to re-open the card sheet after a reload
 function snapToCard(s){
   return {
@@ -542,11 +590,8 @@ function showSearch(){
   renderSearch();
   qIn.focus();
 }
-const TAB_OF = {
-  sets:"tab-packs", set:"tab-packs", search:"tab-cards",
-  deck:"tab-deck", decks:"tab-decks", deckview:"tab-decks", owned:"tab-owned"
-};
-const EXTRA_TABS = ["tab-deck","tab-decks","tab-owned"];
+const TAB_OF = {sets:"tab-packs", set:"tab-packs", search:"tab-cards", owned:"tab-owned"};
+const EXTRA_TABS = ["tab-owned"];
 function setTab(){
   const active = TAB_OF[VIEW];
   for(const id in TAB_OF) document.getElementById(TAB_OF[id]).classList.remove("on");
@@ -563,16 +608,12 @@ function toggleMore(){
   openMore(!document.getElementById("tabs").classList.contains("open"));
 }
 
-/* Re-draw whatever is on screen after the deck or collection changes. */
+/* Re-draw whatever is on screen after the collection changes. */
 function refreshView(){
-  if(VIEW === "deck") renderBuilder();
-  else if(VIEW === "decks") showDecks();
-  else if(VIEW === "owned") showOwned();
-  else if(VIEW === "deckview"){ const d = DECKS.find(x => x.id === lastDeckId); d ? openDeck(d.id) : showDecks(); }
+  if(VIEW === "owned") renderOwned();
   else if(VIEW === "search") drawFound();
   else if(VIEW === "set") drawCards();
 }
-let lastDeckId = "";
 function exampleSearch(t){ qIn.value = t; runSearch(t); }
 
 let typeTimer = null;
@@ -683,6 +724,9 @@ function findTile(c){
     + '<span class="pp' + (r && r.est ? " est" : "") + '" title="' + esc(r ? (r.est ? "Estimate — " + r.why : r.why) : "") + '">'
     +   (r ? (r.est ? "~" + money(r.v) + ' <span class="tag">est</span>' : money(r.v)) : "—")
     + '</span></div>'
+    + '<div class="addbar"><button class="own ' + (owns(c.id) ? "yes" : "") + '"'
+    +   ' title="' + (owns(c.id) ? "Click to take it out of your collection" : "Put this exact printing in your collection") + '"'
+    +   ' onclick="toggleOwn(\'' + c.id + '\',event)">' + (owns(c.id) ? "✓ In your collection" : "+ Add to collection") + '</button></div>'
     + '</div>';
 }
 
@@ -857,6 +901,7 @@ function renderSetBody(){
   countEl.textContent = currentCards.length + " cards";
   // full card data is already here, so price the set exactly and refresh the cache
   const st = priceStats(currentCards);
+  currentCards = evoOrder(currentCards);
   app.innerHTML = setHeader(current, st)
     + '<div class="tools">'
     +   '<input type="search" id="cq" placeholder="Search cards in this set…">'
@@ -869,6 +914,53 @@ function renderSetBody(){
     + '<div class="cards" id="grid"></div>';
   ["cq","cr","ct"].forEach(id => { const el = document.getElementById(id); if(el) el.addEventListener("input", drawCards); });
   drawCards();
+}
+/* Evolution lines side by side.
+   The grid stays in card-number order, except each Pokémon family is pulled together at the spot
+   where its first card is numbered: Charmander, Charmeleon, Charizard, Charizard ex, then the
+   secret-rare Charizard ex from the back of the set. Trainers and Energy don't move.
+   Families join through names from both ends (evolvesFrom and evolvesTo), so a line still holds
+   together when the middle stage isn't in the set, and rule-box cards (Charizard V, M Charizard-EX)
+   join their species by name. */
+const EVO_SUFFIX = /[\s-](?:EX|ex|GX|V|VMAX|VSTAR|V-UNION|BREAK|LV\.X|LEGEND|Prime|☆|δ|◇|♢)$/;
+function species(name){
+  let n = String(name || "").trim(), prev;
+  do{ prev = n; n = n.replace(EVO_SUFFIX, "").replace(/^(?:M|Mega|Radiant|Shining)\s+/, "").trim(); }
+  while(n && n !== prev);
+  return n || String(name || "");
+}
+function evoOrder(cards){
+  const isMon = c => /^Pok/.test(c.supertype || "");
+  const up = Object.create(null);
+  const find = n => { if(!(n in up)) up[n] = n; while(up[n] !== n){ up[n] = up[up[n]]; n = up[n]; } return n; };
+  const join = (a, b) => { if(a && b) up[find(a)] = find(b); };
+  const from = Object.create(null), into = Object.create(null);
+  for(const c of cards){
+    if(!isMon(c)) continue;
+    join(c.name, species(c.name));
+    if(c.evolvesFrom){ join(c.name, c.evolvesFrom); from[c.name] = c.evolvesFrom; }
+    for(const t of c.evolvesTo || []){ join(c.name, t); if(!(t in into)) into[t] = c.name; }
+  }
+  // how far down its line a card sits: Basic 0, Stage 1 is 1, a VMAX one past its V
+  const depthOf = Object.create(null);
+  const depth = (n, hops) => {
+    if(n in depthOf) return depthOf[n];
+    if(hops > 8) return 0;                                   // guard against a looped chain
+    let d = 0;
+    if(from[n]) d = depth(from[n], hops + 1) + 1;
+    else if(into[n]) d = depth(into[n], hops + 1) + 1;
+    else if(species(n) !== n) d = depth(species(n), hops + 1);
+    return depthOf[n] = d;
+  };
+  const rows = cards.map((c, i) => ({c, i, f: isMon(c) ? "p:" + find(c.name) : "c:" + c.id, d: isMon(c) ? depth(c.name, 0) : 0}));
+  const first = Object.create(null), nameAt = Object.create(null);
+  for(const r of rows){
+    if(!(r.f in first)) first[r.f] = r.i;
+    if(!(r.c.name in nameAt)) nameAt[r.c.name] = r.i;
+  }
+  return rows.sort((a, b) =>
+    first[a.f] - first[b.f] || a.d - b.d || nameAt[a.c.name] - nameAt[b.c.name] || a.i - b.i
+  ).map(r => r.c);
 }
 function drawCards(){
   const t  = (document.getElementById("cq") || {}).value || "";
@@ -919,217 +1011,296 @@ function ripPack(){
   grid.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
-/* ---------------- deck builder ----------------
-   Cards are filtered by Pokémon type and nothing else — pick Water, get Water Pokémon. */
-const TYPES = ["Grass","Fire","Water","Lightning","Psychic","Fighting","Darkness","Metal","Fairy","Dragon","Colorless"];
-let deckType = "", deckHits = [], deckPage = 1, deckTotal = 0, deckBusy = false;
-
-function showBuilder(){
-  closeCard();
-  VIEW = "deck"; setTab();
-  if(!deckType) deckType = "Grass";
-  renderBuilder();
-  if(!deckHits.length) loadType(deckType);
-}
-function pickType(t){
-  if(deckType === t) return;
-  deckType = t; deckHits = []; deckPage = 1; deckTotal = 0;
-  renderBuilder();
-  loadType(t);
-}
-async function loadType(t, page){
-  deckBusy = true;
-  const body = document.getElementById("deckbody");
-  if(body && !page) body.innerHTML = '<div class="msg"><div class="spinner"></div>Finding ' + esc(t) + ' Pokémon…</div>';
-  try{
-    const q = 'types:' + t + ' supertype:Pokémon';
-    const d = await getJSON(API + "/cards?q=" + encodeURIComponent(q)
-      + "&orderBy=-set.releaseDate,number&pageSize=60&page=" + (page || 1));
-    if(t !== deckType) return;               // user switched type mid-flight
-    deckHits = page ? deckHits.concat(d.data) : d.data;
-    deckTotal = d.totalCount;
-    deckPage = page || 1;
-    remember(deckHits);
-  }catch(e){
-    if(body) body.innerHTML = '<div class="msg">' + esc(e.message)
-      + '<br><br><button class="btn-gold" onclick="loadType(deckType)">Try again</button></div>';
-    deckBusy = false;
-    return;
-  }
-  deckBusy = false;
-  renderBuilder();
-}
-async function moreType(){
-  if(deckBusy) return;
-  const b = document.getElementById("moretype");
-  if(b){ b.textContent = "Loading…"; b.disabled = true; }
-  await loadType(deckType, deckPage + 1);
-}
-function renderBuilder(){
-  countEl.textContent = deckCount() + " in deck";
-  app.innerHTML =
-      '<div class="types">' + TYPES.map(t =>
-        '<button class="' + (t === deckType ? "on" : "") + '" style="' + (t === deckType ? "color:" + TYPE_COLORS[t] : "") + '" onclick="pickType(\'' + t + '\')">'
-        + '<i style="background:' + TYPE_COLORS[t] + '"></i>' + t + '</button>').join("")
-    + '</div>'
-    + '<div class="tools" style="margin-top:6px"><span class="count" id="deckshown"></span>'
-    +   '<span class="legend"><b>+</b> adds to your deck &nbsp;·&nbsp; <b>✓</b> marks one you already own</span>'
-    + '</div>'
-    + '<div id="deckbody"></div>'
-    + trayHTML();
-  renderPool();
-}
-function renderPool(){
-  const body = document.getElementById("deckbody");
-  if(!body) return;
-  if(deckBusy && !deckHits.length) return;
-  const shown = document.getElementById("deckshown");
-  if(shown) shown.textContent = deckHits.length + " of " + deckTotal.toLocaleString("en-US") + " " + deckType + " Pokémon";
-  body.innerHTML = '<div class="found deckgrid">' + deckHits.map(poolTile).join("") + '</div>'
-    + (deckHits.length < deckTotal
-        ? '<button class="btn-gold more" id="moretype" onclick="moreType()">Load more '
-          + esc(deckType) + ' Pokémon</button>' : '');
-}
-function poolTile(c){
-  const s = c.set || {}, r = cardValue(c), q = inDeck(c.id), have = owns(c.id);
-  return '<div class="find" onclick="openCard(\'' + c.id + '\')" style="position:relative">'
-    + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
-    + (q ? '<div class="indeck">×' + q + ' in deck</div>' : '')
-    + (have ? '<div class="ownmark">✓</div>' : '')
-    + '<div class="fnm">' + esc(c.name) + '</div>'
-    + '<div class="fset"><span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
-    + '<div class="frow"><span class="rr">' + esc(c.rarity || "—") + '</span>'
-    +   '<span class="pp' + (r && r.est ? " est" : "") + '">' + (r ? (r.est ? "~" + money(r.v) : money(r.v)) : "—") + '</span></div>'
-    + '<div class="addbar">'
-    +   (q ? '<button class="add" onclick="dropFromDeck(\'' + c.id + '\',event)">−</button>' : '')
-    +   '<button class="add" onclick="addToDeck(\'' + c.id + '\',event)">+ Add' + (q ? " another" : " to deck") + '</button>'
-    +   '<button class="own ' + (have ? "yes" : "") + '" title="' + (have ? "You have this card" : "Tick if you already have it")
-    +     '" onclick="toggleOwn(\'' + c.id + '\',event)">' + (have ? "✓ Have" : "✓") + '</button>'
-    + '</div></div>';
-}
-function trayHTML(){
-  const n = deckCount();
-  const strip = deck.cards.length
-    ? deck.cards.map(e => '<span class="mini" title="' + esc(e.snap.n) + ' — click to remove one" onclick="dropFromDeck(\'' + e.id + '\',event)">'
-        + '<img src="' + e.snap.img + '" alt="' + esc(e.snap.n) + '">'
-        + (e.qty > 1 ? '<b>' + e.qty + '</b>' : '') + '</span>').join("")
-    : '<span class="empty">No cards yet — hit “+ Add to deck” on any card above.</span>';
-  return '<div class="tray"><div class="tray-in">'
-    + '<input type="text" id="deckname" placeholder="Name your deck…" value="' + esc(deck.name || "") + '"'
-    +   ' oninput="deck.name=this.value;store.set(\'pkDraft\',deck)">'
-    + '<span class="tot"><b>' + n + '</b> card' + (n === 1 ? "" : "s") + '</span>'
-    + '<span class="tot">' + money(deckValue()) + '</span>'
-    + '<div class="strip">' + strip + '</div>'
-    + '<button class="back" onclick="clearDeck()">Clear</button>'
-    + '<button class="btn-gold" onclick="saveDeck()">Save deck</button>'
-    + '</div></div>';
-}
-function deckValue(){
-  return deck.cards.reduce((t, e) => t + (e.snap.v || 0) * e.qty, 0);
-}
-
-/* ---------------- saved decks ---------------- */
-function showDecks(){
-  closeCard();
-  VIEW = "decks"; setTab();
-  countEl.textContent = DECKS.length + " saved deck" + (DECKS.length === 1 ? "" : "s");
-  if(!DECKS.length){
-    app.innerHTML = '<div class="hint"><h3>No saved decks yet</h3>'
-      + 'Build one in the deck builder, give it a name and hit Save.<br>'
-      + 'Everything you save stays in this browser.'
-      + '<div class="egs"><button onclick="showBuilder()">Open the deck builder</button></div></div>';
-    return;
-  }
-  app.innerHTML = '<div class="decks">' + DECKS.map(d => {
-    const n = d.cards.reduce((t,e) => t + e.qty, 0);
-    const have = d.cards.filter(e => owns(e.id)).length;
-    const val = d.cards.reduce((t,e) => t + ((e.snap && e.snap.v) || 0) * e.qty, 0);
-    return '<div class="deckcard" onclick="openDeck(\'' + d.id + '\')">'
-      + '<div class="fan">' + d.cards.slice(0,6).map(e => '<img src="' + e.snap.img + '" alt="">').join("") + '</div>'
-      + '<h3>' + esc(d.name) + '</h3>'
-      + '<div class="dmeta">' + n + ' cards &nbsp;·&nbsp; ' + money(val) + ' &nbsp;·&nbsp; saved ' + esc(d.saved) + '</div>'
-      + '<div class="dmeta"><span class="' + (have === d.cards.length ? "havepct" : "need") + '">'
-      +   'you have ' + have + ' of ' + d.cards.length + ' different cards</span></div>'
-      + '</div>';
-  }).join("") + '</div>';
-}
-function openDeck(id){
-  const d = DECKS.find(x => x.id === id); if(!d) return;
-  closeCard();
-  lastDeckId = id;
-  VIEW = "deckview"; setTab();
-  for(const e of d.cards) if(!CARDS.has(e.id) && e.snap) CARDS.set(e.id, snapToCard(e.snap));
-  const n = d.cards.reduce((t,e) => t + e.qty, 0);
-  const have = d.cards.filter(e => owns(e.id));
-  const missing = d.cards.filter(e => !owns(e.id));
-  const val = d.cards.reduce((t,e) => t + ((e.snap && e.snap.v) || 0) * e.qty, 0);
-  countEl.textContent = n + " cards";
-  app.innerHTML =
-      '<div style="margin-top:22px"><button class="back" onclick="showDecks()">&larr; All decks</button></div>'
-    + '<div class="set-head"><div style="flex:1">'
-    +   '<h1>' + esc(d.name) + '</h1>'
-    +   '<div class="stats">'
-    +     '<div>Cards<b>' + n + '</b></div>'
-    +     '<div>Different cards<b>' + d.cards.length + '</b></div>'
-    +     '<div>Deck value<b style="color:#7ee38a">' + money(val) + '</b></div>'
-    +     '<div>You already have<b class="' + (missing.length ? "need" : "havepct") + '">'
-    +       have.length + ' of ' + d.cards.length + '</b></div>'
-    +     '<div>Saved<b>' + esc(d.saved) + '</b></div>'
-    +   '</div>'
-    +   '<div class="rowbtns">'
-    +     '<button class="btn-gold" onclick="editDeck(\'' + d.id + '\')">Edit this deck</button>'
-    +     '<button class="back" onclick="deleteDeck(\'' + d.id + '\',event)">Delete</button>'
-    +   '</div>'
-    + '</div></div>'
-    + (missing.length
-        ? '<div class="warn" style="margin-top:16px"><b>Still to find — ' + missing.length + ' card'
-          + (missing.length === 1 ? "" : "s") + '</b>'
-          + missing.map(e => esc(e.snap.n) + ' <span style="opacity:.75">(' + esc(e.snap.set) + ' #' + esc(e.snap.num) + ')</span>').join(" &nbsp;·&nbsp; ")
-          + '</div>'
-        : '<div class="warn" style="margin-top:16px;border-color:rgba(126,227,138,.4);background:rgba(126,227,138,.08)">'
-          + '<b style="color:#7ee38a">You own every card in this deck.</b>Go build it.</div>')
-    + '<div class="found" style="margin-top:18px">' + d.cards.map(e => deckCardTile(e)).join("") + '</div>';
-}
-function deckCardTile(e){
-  const s = e.snap, have = owns(e.id);
-  return '<div class="find" onclick="openCard(\'' + e.id + '\')" style="position:relative">'
+/* ---------------- collection ---------------- */
+function ownedTile(s){
+  const have = owns(s.id);
+  return '<div class="find" onclick="openCard(\'' + s.id + '\')" style="position:relative">'
     + '<img class="art" src="' + s.img + '" alt="' + esc(s.n) + '" loading="lazy">'
-    + (e.qty > 1 ? '<div class="indeck">×' + e.qty + '</div>' : '')
     + (have ? '<div class="ownmark">✓</div>' : '')
     + '<div class="fnm">' + esc(s.n) + '</div>'
     + '<div class="fset"><span>' + esc(s.set) + ' · #' + esc(s.num) + '</span></div>'
+    + (s.slot ? '<div class="fslot">Binder: ' + slotLabel(s.slot) + '</div>' : '')
     + '<div class="frow"><span class="rr">' + esc(s.rar || "—") + '</span>'
     +   '<span class="pp' + (s.est ? " est" : "") + '">' + (s.v != null ? (s.est ? "~" : "") + money(s.v) : "—") + '</span></div>'
-    + '<div class="addbar"><button class="own ' + (have ? "yes" : "") + '" style="flex:1"'
-    +   ' onclick="toggleOwn(\'' + e.id + '\',event)">' + (have ? "✓ You have this" : "✓ Tick if you have it") + '</button></div>'
+    + '<div class="addbar"><button class="own ' + (have ? "yes" : "") + '"'
+    +   ' onclick="toggleOwn(\'' + s.id + '\',event)">' + (have ? "✓ You have this" : "✓ Tick if you have it") + '</button></div>'
     + '</div>';
 }
 
-/* ---------------- collection ---------------- */
+let ownedTerm = "";   // what's typed in the collection's search box
 function showOwned(){
   closeCard();
   VIEW = "owned"; setTab();
+  ownedTerm = "";
+  renderOwned();
+}
+// separate from showOwned so un-ticking a card from its sheet doesn't close the sheet
+function renderOwned(){
   const list = Object.values(OWNED);
+  const head = '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>My collection</h1>'
+    + '<div class="tagline">An online way to keep track of your Pokémon</div>';
+  countEl.textContent = "";
+  if(!authReady){
+    app.innerHTML = head + '</div></div><div class="msg"><div class="spinner"></div>Checking whether you\'re signed in…</div>';
+    return;
+  }
+  if(!USER){
+    app.innerHTML = head + '</div></div>'
+      + '<div class="hint" style="padding-top:40px"><h3>Sign in to make your collection</h3>'
+      + 'You have to sign in so we can <b style="color:var(--gold)">save your stuff</b> — every card you add, and where it sits'
+      + ' in your binder.<br>It stays in your account, so it\'s there on any phone or computer you sign in on.'
+      + '<div class="egs" style="margin-top:22px"><button class="gbtn" onclick="signIn()"><i>G</i>Sign in with Google</button></div></div>';
+    return;
+  }
+  if(loadingCollection){
+    app.innerHTML = head + '</div></div><div class="msg"><div class="spinner"></div>Loading your collection…</div>';
+    return;
+  }
+  if(!collectionLoaded){
+    app.innerHTML = head + '</div></div><div class="msg">Your collection didn\'t load, so nothing can be changed or saved right now.'
+      + (collectionError ? '<br><span style="font-size:13px">(' + esc(collectionError) + ')</span>' : '')
+      + '<br><br><button class="btn-gold" onclick="retryCollection()">Try again</button></div>';
+    return;
+  }
   countEl.textContent = list.length + " card" + (list.length === 1 ? "" : "s");
   if(!list.length){
-    app.innerHTML = '<div class="hint"><h3>Nothing ticked off yet</h3>'
-      + 'Anywhere you see a card, hit the <b style="color:#7ee38a">✓</b> to say you already have it.<br>'
-      + 'They all collect here, and saved decks show what you still need.'
-      + '<div class="egs"><button onclick="showBuilder()">Start in the deck builder</button>'
-      + '<button onclick="showSearch()">Search for a card</button></div></div>';
+    app.innerHTML = head + '</div></div>'
+      + '<div class="hint" style="padding-top:40px"><h3>Nothing in your collection yet</h3>'
+      + 'Hit <b style="color:#7ee38a">+ Add to collection</b> on any card in Card search, '
+      + 'or open a card and hit <b style="color:#7ee38a">✓ I have this card</b>.'
+      + '<div class="egs"><button onclick="showSearch()">Search for a card</button>'
+      + '<button onclick="showSets()">Browse the sets</button></div></div>';
     return;
   }
   for(const s of list) if(!CARDS.has(s.id)) CARDS.set(s.id, snapToCard(s));
   const val = list.reduce((t,s) => t + (s.v || 0), 0);
-  app.innerHTML =
-      '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>My collection</h1>'
+  app.innerHTML = head
     +   '<div class="stats">'
-    +     '<div>Cards ticked off<b>' + list.length + '</b></div>'
+    +     '<div>Cards in your collection<b>' + list.length + '</b></div>'
     +     '<div>What they\'re worth<b style="color:#7ee38a">' + money(val) + '</b></div>'
     +   '</div></div></div>'
-    + '<div class="found" style="margin-top:18px">'
-    + list.map(s => deckCardTile({id:s.id, qty:1, snap:s})).join("")
-    + '</div>';
+    + '<div class="tools">'
+    +   '<input type="search" id="oq" placeholder="Search your collection…" value="' + esc(ownedTerm) + '">'
+    +   '<span class="count" id="oshown"></span>'
+    + '</div>'
+    + '<div class="found" id="ogrid" style="margin-top:18px"></div>';
+  document.getElementById("oq").addEventListener("input", e => { ownedTerm = e.target.value; drawOwned(); });
+  drawOwned();
+}
+// matches a card's name, set or rarity, or its exact number ("199" or "#199")
+function drawOwned(){
+  const list = Object.values(OWNED);
+  const term = ownedTerm.trim().toLowerCase();
+  const num = term.replace(/^#/, "");
+  const hits = list.filter(s => !term
+    || (s.n || "").toLowerCase().includes(term) || (s.set || "").toLowerCase().includes(term)
+    || (s.rar || "").toLowerCase().includes(term) || String(s.num).toLowerCase() === num);
+  document.getElementById("oshown").textContent = term ? hits.length + " / " + list.length + " cards" : "";
+  document.getElementById("ogrid").innerHTML = hits.map(ownedTile).join("")
+    || '<div class="msg" style="grid-column:1/-1">Nothing in your collection matches “' + esc(ownedTerm.trim()) + '”.</div>';
+}
+
+/* ---------------- accounts ----------------
+   Making a collection needs an account, so there's somewhere to save it: Google sign-in through
+   Firebase, and one Firestore document per person at collections/<uid> holding {owned, binder}.
+   Browsing sets, prices and card search never needs signing in.
+
+   FIREBASE_CONFIG comes from the Firebase console (Project settings → Your apps → Web app). These
+   values are public by design and fine to commit — the Firestore security rules are what stop one
+   person reading or writing another's collection. Until it's filled in, sign-in says it isn't
+   switched on. */
+const FIREBASE_CONFIG = {
+  apiKey: "",
+  authDomain: "",
+  projectId: "",
+  appId: ""
+};
+let USER = null;                 // the signed-in Firebase user
+let authReady = false;           // false until Firebase says whether anyone is signed in
+let loadingCollection = false;
+let collectionLoaded = false;    // never save unless the account's collection loaded first —
+let collectionError = "";        // writing after a failed load would wipe what's really there
+let pendingOwn = "";             // a card someone tried to add before signing in; added once they do
+let fbAuth = null, fbDb = null, saveTimer = null;
+
+function accountsOn(){ return !!(FIREBASE_CONFIG.apiKey && window.firebase && firebase.initializeApp); }
+
+function initAccounts(){
+  if(!accountsOn()){ authReady = true; drawAccount(); refreshView(); return; }
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);
+    fbAuth = firebase.auth();
+    fbDb = firebase.firestore();
+  }catch(e){ authReady = true; drawAccount(); refreshView(); return; }
+  fbAuth.getRedirectResult().catch(e => toast(authError(e)));
+  fbAuth.onAuthStateChanged(async u => {
+    USER = u; authReady = true;
+    OWNED = {}; BINDER = 9; collectionLoaded = false; collectionError = "";
+    if(u){
+      loadingCollection = true;
+      drawAccount(); refreshView();
+      await loadCollection();
+      loadingCollection = false;
+    }
+    drawAccount(); refreshView(); redrawSheet();
+    if(u && collectionLoaded && pendingOwn){
+      const id = pendingOwn; pendingOwn = "";
+      if(!OWNED[id] && CARDS.has(id)) toggleOwn(id);
+    }
+  });
+  // don't lose the last change if the tab closes inside the save delay
+  document.addEventListener("visibilitychange", () => { if(document.hidden) flushSave(); });
+}
+
+function colRef(uid){ return fbDb.collection("collections").doc(uid); }
+
+async function loadCollection(){
+  const uid = USER.uid;
+  let hadBinder = false;
+  try{
+    const snap = await colRef(uid).get();
+    if(!USER || USER.uid !== uid) return;          // signed out or switched while it loaded
+    const d = snap.exists ? snap.data() : {};
+    OWNED = d.owned || {};
+    hadBinder = !!BINDER_COLS[d.binder];
+    BINDER = hadBinder ? d.binder : 9;
+    collectionLoaded = true;
+  }catch(e){
+    collectionError = e.code === "permission-denied"
+      ? "the database refused — check the Firestore security rules" : (e.message || String(e));
+    return;
+  }
+  // A collection made on this browser before accounts existed moves into the account, once.
+  const old = store.get("pkOwned", null);
+  if(old && Object.keys(old).length){
+    const taken = {};
+    for(const k in OWNED){ const sl = OWNED[k].slot; if(sl) taken[sl.p + ":" + sl.s] = 1; }
+    let moved = 0;
+    for(const k in old){
+      if(OWNED[k]) continue;
+      const e = old[k];
+      if(e.slot && taken[e.slot.p + ":" + e.slot.s]) delete e.slot;   // one card per pocket
+      else if(e.slot) taken[e.slot.p + ":" + e.slot.s] = 1;
+      OWNED[k] = e; moved++;
+    }
+    const oldB = store.get("pkBinder", null);
+    if(!hadBinder && BINDER_COLS[oldB]) BINDER = oldB;
+    try{
+      await colRef(uid).set(collectionDoc());
+      localStorage.removeItem("pkOwned"); localStorage.removeItem("pkBinder");
+      if(moved) toast("Moved " + moved + " card" + (moved === 1 ? "" : "s") + " saved on this browser into your account.");
+    }catch(e){ /* keep the local copy and try again next sign-in */ }
+  }
+}
+function collectionDoc(){
+  return {owned: OWNED, binder: BINDER, updated: firebase.firestore.FieldValue.serverTimestamp()};
+}
+function retryCollection(){
+  if(!USER) return;
+  loadingCollection = true; collectionError = ""; refreshView();
+  loadCollection().then(() => { loadingCollection = false; refreshView(); redrawSheet(); });
+}
+
+/* Changes save a moment after the last click, so ticking ten cards is one write, not ten. */
+function saveCollection(){
+  if(!USER || !collectionLoaded) return;
+  const uid = USER.uid;
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(() => {
+    saveTimer = null;
+    if(!USER || USER.uid !== uid) return;
+    colRef(uid).set(collectionDoc()).catch(e => toast("Couldn't save your collection — " + (e.message || e)));
+  }, 500);
+}
+function flushSave(){
+  if(!saveTimer || !USER || !collectionLoaded) return Promise.resolve();
+  clearTimeout(saveTimer); saveTimer = null;
+  return colRef(USER.uid).set(collectionDoc()).catch(() => {});
+}
+
+/* The gate: anything that changes the collection asks this first. */
+function needSignIn(id){
+  if(USER && collectionLoaded) return false;
+  if(USER){
+    toast(loadingCollection ? "Still loading your collection — one second." : "Your collection didn't load, so nothing can be saved right now.");
+    return true;
+  }
+  pendingOwn = id || "";
+  showSignIn();
+  return true;
+}
+function showSignIn(){
+  if(document.getElementById("signin")) return;
+  document.body.insertAdjacentHTML("beforeend",
+    '<div class="modal" id="signin" style="z-index:110" onclick="if(event.target===this)closeSignIn(true)">'
+    + '<div class="sheet signin"><button class="x" onclick="closeSignIn(true)">&times;</button>'
+    + '<div class="pokeball"></div>'
+    + '<h2>Sign in to make your collection</h2>'
+    + '<p>You have to sign in so we can <b>save your stuff</b> — every card you add, and where it sits in your binder.'
+    + ' It stays in your account, so it\'s there on any phone or computer you sign in on.</p>'
+    + '<button class="gbtn" onclick="signIn()"><i>G</i>Sign in with Google</button>'
+    + '<small>Browsing sets, prices and card search never needs an account.</small>'
+    + '</div></div>');
+}
+function closeSignIn(cancelled){
+  const m = document.getElementById("signin"); if(m) m.remove();
+  if(cancelled) pendingOwn = "";
+}
+async function signIn(){
+  if(!accountsOn()){ toast("Sign-in isn't switched on for this site yet."); return; }
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try{
+    await fbAuth.signInWithPopup(provider);
+    closeSignIn(false);
+  }catch(e){
+    const code = e.code || "";
+    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
+    if(code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment"){
+      try{ await fbAuth.signInWithRedirect(provider); return; }catch(e2){ toast(authError(e2)); return; }
+    }
+    toast(authError(e));
+  }
+}
+async function signOut(){
+  await flushSave();
+  pendingOwn = "";
+  if(fbAuth) await fbAuth.signOut();
+}
+function authError(e){
+  const code = (e && e.code) || "";
+  if(code === "auth/unauthorized-domain")
+    return "This web address isn't allowed to sign in yet — add it in Firebase under Authentication → Settings → Authorized domains.";
+  if(code === "auth/operation-not-supported-in-this-environment")
+    return "Sign-in needs the site opened from a web address, not straight from a file.";
+  if(code === "auth/network-request-failed") return "Couldn't reach Google to sign in — check your connection.";
+  return "Couldn't sign in — " + ((e && e.message) || "something went wrong") + ".";
+}
+function drawAccount(){
+  const el = document.getElementById("acct"); if(!el) return;
+  if(!authReady){ el.innerHTML = ""; return; }
+  if(USER){
+    const name = (USER.displayName || USER.email || "You").split(" ")[0];
+    el.innerHTML = '<span class="who" title="' + esc(USER.email || "") + '">'
+      + (USER.photoURL ? '<img src="' + esc(USER.photoURL) + '" alt="" referrerpolicy="no-referrer">' : '')
+      + esc(name) + '</span>'
+      + '<button class="back" onclick="signOut()">Sign out</button>';
+  }else{
+    el.innerHTML = '<button class="btn-gold" onclick="showSignIn()">Sign in</button>';
+  }
+}
+function redrawSheet(){
+  if(!modalCard || !document.getElementById("modal")) return;
+  const b = document.getElementById("ownbtn");
+  if(b) b.outerHTML = ownBtn(modalCard.id);
+  redrawBinder(modalCard.id);
+}
+function toast(msg){
+  let t = document.getElementById("toast");
+  if(!t){ t = document.createElement("div"); t.id = "toast"; t.className = "toast"; document.body.appendChild(t); }
+  t.textContent = msg;
+  t.classList.add("on");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => t.classList.remove("on"), 5000);
 }
 
 /* ---------------- card modal ---------------- */
@@ -1162,6 +1333,7 @@ function openCard(id){
   const c = CARDS.get(id); if(!c) return;
   closeCard();            // never stack two sheets — duplicate ids would cross their wires
   modalCard = c;
+  binderPage = (OWNED[id] && OWNED[id].slot) ? OWNED[id].slot.p : 1;
   const tp = (c.tcgplayer && c.tcgplayer.prices) || {};
   const withPrice = Object.keys(tp).filter(k => tp[k] && tp[k].market != null);
   modalVar = withPrice[0] || Object.keys(tp)[0] || "";
@@ -1199,10 +1371,12 @@ function openCard(id){
     + '<div><small>Released</small><b>' + fmtDate(s.releaseDate) + '</b></div>'
     + (c.artist ? '<div><small>Illustrator</small><b>' + esc(c.artist) + '</b></div>' : '')
     + '</div>'
+    + '<div style="margin:-6px 0 14px;display:flex;gap:8px;flex-wrap:wrap">' + ownBtn(c.id)
     + (s.id && SETS.some(x => x.id === s.id)
-        ? '<div style="margin:-6px 0 14px"><button class="back" style="padding:6px 12px;font-size:13px" '
-          + 'onclick="closeCard(); openSet(\'' + s.id + '\')">See the whole ' + esc(s.name) + ' set &rarr;</button></div>'
-        : '');
+        ? '<button class="back" style="padding:6px 12px;font-size:13px" '
+          + 'onclick="closeCard(); openSet(\'' + s.id + '\')">See the whole ' + esc(s.name) + ' set &rarr;</button>'
+        : '')
+    + '</div>';
 
   document.body.insertAdjacentHTML("beforeend",
     '<div class="modal" id="modal" onclick="if(event.target===this)closeCard()">'
@@ -1211,6 +1385,7 @@ function openCard(id){
     + '<div class="info"><h2>' + esc(c.name) + (c.hp ? ' <span style="color:var(--dim);font-size:16px">HP ' + esc(c.hp) + '</span>' : '') + '</h2>'
     + '<div class="sub">' + esc(c.supertype || "") + ' &nbsp;•&nbsp; check these against the card in your hand</div>'
     + idBlock
+    + binderBlock(c.id)
     + '<div id="pricepane">' + priceBlock(c) + '</div>'
     + '<div class="chips">' + typeChips + subChips + '</div>'
     + body + '</div></div></div>');
@@ -1278,7 +1453,8 @@ function energy(cost){
 function closeCard(){ const m = document.getElementById("modal"); if(m) m.remove(); }
 document.addEventListener("keydown", e => {
   if(e.key === "Escape"){
-    if(document.getElementById("modal")) closeCard();
+    if(document.getElementById("signin")) closeSignIn(true);
+    else if(document.getElementById("modal")) closeCard();
     else if(VIEW === "set" || VIEW === "search") showSets();
   }
 });
@@ -1310,6 +1486,7 @@ qIn.addEventListener("keydown", e => {
 sortIn.addEventListener("change", () => { if(VIEW === "sets") renderSets(); });
 document.getElementById("snap").textContent = PACK_PRICES.d || "—";
 loadSets();
+initAccounts();
 </script>
 </body>
 </html>

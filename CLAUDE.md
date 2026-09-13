@@ -18,20 +18,21 @@ Sections, switched from the header:
   identically to Packs and Card search, and becomes "Fewer ‹". The row starts collapsed, and
   auto-expands whenever you're in one of the hidden sections so the active tab is never hidden.
   New sections go here — add a button with class `extra` and an entry in `TAB_OF`:
-  - **Deck builder** — pick a Pokémon type, add cards to a deck, tick off the ones you own, save it.
-  - **My decks** — saved decks, each showing what it's worth and what you still need to find.
   - **My collection** — every card you've ticked off, and what it's worth.
 
 ## Files
 
-- `index.html` — the entire site. No build step, no dependencies. Double-click it and it runs.
+- `index.html` — the entire site. No build step; the only outside scripts are Firebase's, for
+  accounts. Double-click it and everything but sign-in runs.
 - `update-pack-prices.py` — dev tool. Refreshes the pack prices baked into `index.html`.
   Not needed to run the site.
 
 ## Run it
 
-Open `C:\Users\arche\pokemon-packs\index.html` in any browser. That's it — `file://` works
-because the API sends `Access-Control-Allow-Origin: *`.
+Open `C:\Users\arche\pokemon-packs\index.html` in any browser. Browsing works from `file://`
+because the API sends `Access-Control-Allow-Origin: *` — but **Google sign-in does not**; Firebase
+Auth needs a real origin. Use the HTTP server below (`localhost` is an authorized domain by default)
+or the live site to test anything collection-related.
 
 To serve it over HTTP instead (needed for the Browser pane to render it as a live page rather
 than a static snapshot):
@@ -98,11 +99,12 @@ a bare `fetch` will look broken half the time. Without an API key the limit is 1
 | `cardPrice` / `cardValue` / `warnBox` / `estLegend` | Real price, estimate fallbacks, and the labelling that keeps them apart |
 | `priceStats` | Priciest-card stat — real prices only, never estimates |
 | `openSet` / `renderSetBody` / `drawCards` | One set: header stats, rarity + type filters, card grid |
+| `evoOrder` / `species` | Set card grid order: number order, but each evolution line pulled together at its first card |
 | `showSearch` / `runSearch` / `renderSearch` / `findTile` | Card search: query, paging, result grid |
 | `openCard` / `priceBlock` / `selectVar` | Card sheet: identification block, printing picker, prices |
-| `showBuilder` / `pickType` / `poolTile` / `trayHTML` | Deck builder: type filter, card pool, deck tray |
-| `showDecks` / `openDeck` / `saveDeck` / `snapOf` / `snapToCard` | Saved decks and the snapshots that let them stand alone |
-| `toggleOwn` / `showOwned` | Ticking off cards you have, and the collection view |
+| `toggleOwn` / `ownBtn` / `showOwned` / `renderOwned` / `drawOwned` / `ownedTile` | Ticking off cards (from the card sheet), and the collection view |
+| `binderBlock` / `setSlot` / `clearSlot` / `binderTo` / `setBinderSize` / `slotLabel` | Binder slot picker in the card sheet, for cards in the collection |
+| `snapOf` / `snapToCard` | The card snapshots that let the collection render without re-fetching |
 | `ripPack` | Booster-pack simulator — 5 commons, 3 uncommons, 1 rare with an 18% chase pull |
 
 Sorts: newest, oldest, priciest pack, A–Z, most cards. The list is deliberately **flat** (no
@@ -139,30 +141,97 @@ results, a count in the grid legend, and a yellow box in the card sheet naming t
 wording adapts to which fallback was used — don't claim "brand-new sets take a while to sell"
 for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a real price.
 
-### Decks and the collection
+### Accounts
 
-All of it is `localStorage`, on one browser, no account — `pkOwned` (ticked-off cards),
-`pkDecks` (saved decks), `pkDraft` (the deck being built, saved on every change so a reload
-doesn't lose work).
+**Making a collection requires signing in** — the user asked for that explicitly, and for the site
+to say why: "you have to sign in so we can save your stuff". Browsing sets, prices and card
+search never needs an account.
+
+Google sign-in via **Firebase Auth**, storage in **Cloud Firestore**, both through the compat SDK
+(`firebase-*-compat.js` 12.19.0 from `www.gstatic.com`, plain script tags, no bundler). One
+document per person: `collections/<uid>` = `{owned: {cardId: snapshot}, binder: 4|9|12, updated}`.
+A Firestore document caps at 1 MiB — about 3,000 cards at ~300 bytes of snapshot each. Past that,
+split `owned` into a subcollection.
+
+`FIREBASE_CONFIG` in `index.html` holds the web app's config. Those values are **public by design**
+and fine to commit; what protects collections is the security rules, which must be:
+
+```
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /collections/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+    }
+  }
+}
+```
+
+Setup the Firebase console needs: Google enabled under Authentication → Sign-in method; a
+Firestore database with the rules above; `acherchu.github.io` added under Authentication →
+Settings → Authorized domains (`localhost` is there already). With `FIREBASE_CONFIG.apiKey` empty,
+`accountsOn()` is false and sign-in just says it isn't switched on.
+
+How it hangs together (`initAccounts`, run after `loadSets`):
+
+- `onAuthStateChanged` resets `OWNED`/`BINDER`, then `loadCollection()` reads the document.
+- **`collectionLoaded` gates every save.** If the read fails (offline, rules wrong), nothing is
+  written — writing then would replace the real collection with an empty one. The page says it
+  didn't load and offers Try again; a permission error names the security rules as the likely cause.
+- `needSignIn(id)` is the gate every change calls first (`toggleOwn`, `setSlot`, `clearSlot`,
+  `setBinderSize`). Signed out, it opens the sign-in box (`showSignIn`) and remembers the card in
+  `pendingOwn`, which is added straight after sign-in. Closing the box without signing in clears it.
+- `saveCollection()` debounces writes by 500ms (ticking ten cards = one write). `flushSave()` runs on
+  sign-out and when the tab is hidden so the last change isn't lost. The timer checks the uid it
+  was scheduled for, so a save can never land in a different account.
+- **Migration:** a pre-accounts `pkOwned` / `pkBinder` in localStorage is merged into the account on
+  first sign-in (account entries win; a clashing binder pocket drops the incoming card's slot), then
+  the local keys are deleted — only after the write succeeds.
+- Popup sign-in, falling back to redirect when popups are blocked. `authError()` turns the common
+  failure codes (unauthorized domain, `file://`, offline) into plain sentences.
+
+Tested with a mocked `window.firebase` in the Browser pane (sign-in → migration → pending add →
+save → sign-out flush → reload from account → failed-load protection). A real Google sign-in has
+to be done by a person — never type credentials into the popup.
+
+### The collection
+
+Saved to the signed-in account (above). There used to be a deck builder and saved decks; they were
+removed on purpose, so don't bring them back unasked. Old `pkDecks` / `pkDraft` keys may still sit
+in visitors' browsers — nothing reads them.
+
+Cards go in from a **card search result** (`+ Add to collection` on each `findTile`) or the
+**card sheet** (`ownBtn`, beside the "See the whole set" link), and come out from either of those
+or a collection tile. The collection page leads with the tagline "An online way to keep track of
+your Pokémon" in both its empty and filled states. Its search box (`#oq`, `drawOwned`) filters the
+snapshots in `OWNED` locally — name, set or rarity contains the term, or the number matches
+exactly (`199` or `#199`) — no API call. `ownedTerm` survives `renderOwned` redraws, so removing a
+card mid-search keeps the filter; `showOwned` resets it. `showOwned` closes
+the sheet and switches view; `refreshView` calls `renderOwned` instead, so un-ticking from an open
+sheet redraws the collection behind it without closing the sheet.
+
+**Binder slots.** A card in the collection can be given a place in the owner's real binder:
+`OWNED[id].slot = {p: page, s: pocket}`, pockets counted left to right, top to bottom. The card
+sheet shows a "Binder slot" block (`binderBlock`, `#binderpane`) only for collected cards: a
+picture of one binder page, page ‹ › and a page-number box, a 4 / 9 / 12-pocket layout select
+(saved to the account as `binder`, default 9), and "Remove from slot". Pockets holding another card show
+that card and aren't clickable — **one card per pocket**, never silently overwrite. The sheet opens
+on the card's own page. Collection tiles show "Binder: Page N · Slot N". Removing a card from the
+collection drops its slot with it.
 
 Every stored entry keeps a **snapshot** of the card (`snapOf`): name, set, number, rarity, both
-image URLs, and its value at save time. That's the point — a saved deck renders completely
-without re-fetching 60 cards, and still works when the API is down. `snapToCard` turns one back
+image URLs, and its value at save time. That's the point — the collection renders completely
+without re-fetching every card, and still works when the API is down. `snapToCard` turns one back
 into enough of a card object for the card sheet to open after a reload, so `CARDS` gets seeded
-from snapshots whenever a deck or the collection is shown.
+from snapshots whenever the collection is shown.
 
 Store both image URLs, never derive one from the other: older cards are
 `images.pokemontcg.io/<set>/<n>.png` with a `_hires` twin, newer ones are `images.scrydex.com/...`
 where no such twin exists.
 
-The deck builder filters by **Pokémon type only** — that's deliberate, not an unfinished filter
-bar. `q=types:<Type> supertype:Pokémon`, 60 at a time. `loadType` drops a response whose type is
-no longer selected, so switching type mid-request can't scramble the grid; that also means
-calling it directly with a type that isn't `deckType` silently does nothing — go through
-`pickType`.
-
-Add/tick buttons sit on top of a tile that opens the card sheet, so every one of them takes
-`event` and calls `stopPropagation`. `refreshView()` redraws whichever section is open after a
+Tick buttons on search and collection tiles sit on top of a tile that opens the card sheet, so
+they take `event` and call `stopPropagation`. `.find` is a flex column with the button bar at
+`margin-top:auto`, so buttons line up across a row when a rarity name wraps. `refreshView()` redraws whichever section is open after a
 change.
 
 ### Printing picker
@@ -184,6 +253,11 @@ actually use.
 This one is **public** — it is a real site people have the link to. Don't push a broken `main`;
 check it in a browser first, because there's no staging step between a push and the live URL.
 
-Same as the browser games: **keep it one self-contained HTML file.** No bundler, no
-package.json, no npm dependency. All card art and set logos are hotlinked from
+**Theme is Pokémon blue and yellow** — navy/blue panels (`--bg`, `--panel`, `--panel2`, `--line`),
+`--gold` #ffcb05 for accents and the active tab, a blue header with a yellow bottom edge.
+Prices stay green (`#7ee38a`) and estimates stay gold; those colours carry meaning.
+
+Same as the browser games: **keep it one HTML file.** No bundler, no package.json, no npm
+dependency. The Firebase compat scripts are the one deliberate exception (accounts need a
+backend); pin their version, and don't add others. All card art and set logos are hotlinked from
 `images.pokemontcg.io`.
