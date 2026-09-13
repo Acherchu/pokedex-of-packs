@@ -22,17 +22,15 @@ Sections, switched from the header:
 
 ## Files
 
-- `index.html` — the entire site. No build step; the only outside scripts are Firebase's, for
-  accounts. Double-click it and everything but sign-in runs.
+- `index.html` — the entire site. No build step, no dependencies. Double-click it and it runs.
 - `update-pack-prices.py` — dev tool. Refreshes the pack prices baked into `index.html`.
   Not needed to run the site.
 
 ## Run it
 
-Open `C:\Users\arche\pokemon-packs\index.html` in any browser. Browsing works from `file://`
-because the API sends `Access-Control-Allow-Origin: *` — but **Google sign-in does not**; Firebase
-Auth needs a real origin. Use the HTTP server below (`localhost` is an authorized domain by default)
-or the live site to test anything collection-related.
+Open `C:\Users\arche\pokemon-packs\index.html` in any browser. That's it — `file://` works
+because the API sends `Access-Control-Allow-Origin: *`. (Note `file://` and `localhost` have
+separate localStorage, so signed-in names and collections don't carry between them.)
 
 To serve it over HTTP instead (needed for the Browser pane to render it as a live page rather
 than a static snapshot):
@@ -144,59 +142,40 @@ for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a r
 ### Accounts
 
 **Making a collection requires signing in** — the user asked for that explicitly, and for the site
-to say why: "you have to sign in so we can save your stuff". Browsing sets, prices and card
-search never needs an account.
+to say why: "you have to sign in so we can save your stuff". Browsing sets, prices and card search
+never needs signing in.
 
-Google sign-in via **Firebase Auth**, storage in **Cloud Firestore**, both through the compat SDK
-(`firebase-*-compat.js` 12.19.0 from `www.gstatic.com`, plain script tags, no bundler). One
-document per person: `collections/<uid>` = `{owned: {cardId: snapshot}, binder: 4|9|12, updated}`.
-A Firestore document caps at 1 MiB — about 3,000 cards at ~300 bytes of snapshot each. Past that,
-split `owned` into a subcollection.
+Signing in is **just a name** — no password, no Google, no outside service. This replaced a
+Firebase (Google sign-in + Firestore) version on purpose: setting up Firebase needs an adult's
+Google account, which the owner doesn't have. Don't reintroduce Firebase or any login provider
+unless the user asks for it again. All of it is localStorage on one device:
 
-`FIREBASE_CONFIG` in `index.html` holds the web app's config. Those values are **public by design**
-and fine to commit; what protects collections is the security rules, which must be:
+- `pkProfiles` = `{<lowercased name>: {name, owned: {cardId: snapshot}, binder: 4|9|12}}`
+- `pkUser` = the lowercased name currently signed in (so a reload keeps you signed in)
 
-```
-rules_version = '2';
-service cloud.firestore {
-  match /databases/{database}/documents {
-    match /collections/{uid} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
-    }
-  }
-}
-```
-
-Setup the Firebase console needs: Google enabled under Authentication → Sign-in method; a
-Firestore database with the rules above; `acherchu.github.io` added under Authentication →
-Settings → Authorized domains (`localhost` is there already). With `FIREBASE_CONFIG.apiKey` empty,
-`accountsOn()` is false and sign-in just says it isn't switched on.
+Names are matched case-insensitively and trimmed ("  aSH " signs in as Ash), max 24 characters.
+It is **not private** — anyone on the same browser can sign in with the same name, and the box
+lists names used on this device ("Signed in here before?") as one-tap buttons. The sign-in box and
+the signed-out collection page both say the collection saves on this device; keep that honest —
+never claim it syncs or follows you to other devices.
 
 How it hangs together (`initAccounts`, run after `loadSets`):
 
-- `onAuthStateChanged` resets `OWNED`/`BINDER`, then `loadCollection()` reads the document.
-- **`collectionLoaded` gates every save.** If the read fails (offline, rules wrong), nothing is
-  written — writing then would replace the real collection with an empty one. The page says it
-  didn't load and offers Try again; a permission error names the security rules as the likely cause.
 - `needSignIn(id)` is the gate every change calls first (`toggleOwn`, `setSlot`, `clearSlot`,
   `setBinderSize`). Signed out, it opens the sign-in box (`showSignIn`) and remembers the card in
-  `pendingOwn`, which is added straight after sign-in. Closing the box without signing in clears it.
-- `saveCollection()` debounces writes by 500ms (ticking ten cards = one write). `flushSave()` runs on
-  sign-out and when the tab is hidden so the last change isn't lost. The timer checks the uid it
-  was scheduled for, so a save can never land in a different account.
-- **Migration:** a pre-accounts `pkOwned` / `pkBinder` in localStorage is merged into the account on
-  first sign-in (account entries win; a clashing binder pocket drops the incoming card's slot), then
-  the local keys are deleted — only after the write succeeds.
-- Popup sign-in, falling back to redirect when popups are blocked. `authError()` turns the common
-  failure codes (unauthorized domain, `file://`, offline) into plain sentences.
-
-Tested with a mocked `window.firebase` in the Browser pane (sign-in → migration → pending add →
-save → sign-out flush → reload from account → failed-load protection). A real Google sign-in has
-to be done by a person — never type credentials into the popup.
+  `pendingOwn`, which is added straight after signing in. Closing the box without signing in clears it.
+- `signIn()` reads `#signname`. The input has its own Enter handler (with `preventDefault`) as well
+  as the form's `onsubmit` — in testing, Enter didn't submit the form on its own.
+- `saveCollection()` writes the signed-in profile back to `pkProfiles` immediately; `writeProfiles`
+  toasts if storage is full or blocked.
+- **Migration:** a pre-sign-in `pkOwned` / `pkBinder` is merged into the first name signed in on
+  that browser (profile entries win; a clashing binder pocket drops the incoming card's slot), then
+  the old keys are deleted — only after the write succeeds.
+- `signOut()` clears `pkUser` and empties `OWNED`; the profile itself stays.
 
 ### The collection
 
-Saved to the signed-in account (above). There used to be a deck builder and saved decks; they were
+Saved under the signed-in name (above). There used to be a deck builder and saved decks; they were
 removed on purpose, so don't bring them back unasked. Old `pkDecks` / `pkDraft` keys may still sit
 in visitors' browsers — nothing reads them.
 
@@ -257,7 +236,6 @@ check it in a browser first, because there's no staging step between a push and 
 `--gold` #ffcb05 for accents and the active tab, a blue header with a yellow bottom edge.
 Prices stay green (`#7ee38a`) and estimates stay gold; those colours carry meaning.
 
-Same as the browser games: **keep it one HTML file.** No bundler, no package.json, no npm
-dependency. The Firebase compat scripts are the one deliberate exception (accounts need a
-backend); pin their version, and don't add others. All card art and set logos are hotlinked from
+Same as the browser games: **keep it one self-contained HTML file.** No bundler, no
+package.json, no npm dependency. All card art and set logos are hotlinked from
 `images.pokemontcg.io`.

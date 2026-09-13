@@ -36,13 +36,14 @@ an `EST` tag, and a note in the card sheet explaining exactly where the figure c
 Everything you add collects in one place with its total value, and you can search it. Click a
 card in your collection to record which page and pocket it's in in your real binder.
 
-You have to **sign in with Google** to make a collection, so it can be saved to your account and
-follow you to any phone or computer. Browsing sets, prices and card search never needs an account.
+You have to **sign in** to make a collection so it can be saved — just type a name, no password.
+Your collection saves on that device under your name. Browsing sets, prices and card search never
+needs signing in.
 
 ## Running it
 
-It's one HTML file with no build step — open `index.html` in a browser and it works. Signing in
-uses Firebase and needs the page served from a web address rather than opened as a file. Card data is fetched live from the Pokémon TCG API, so it needs an internet connection.
+It's one HTML file with no build step and no dependencies — open `index.html` in a browser and it
+works. Card data is fetched live from the Pokémon TCG API, so it needs an internet connection.
 
 ## Data
 

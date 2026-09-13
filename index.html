@@ -283,28 +283,27 @@
   /* ---------- accounts ---------- */
   #acct{display:flex;align-items:center;gap:8px}
   #acct .who{display:flex;align-items:center;gap:7px;font-size:13px;font-weight:600;color:var(--text);white-space:nowrap}
-  #acct .who img{width:26px;height:26px;border-radius:50%;border:2px solid var(--gold)}
   #acct .btn-gold{padding:7px 14px;font-size:13px}
   #acct .back{padding:6px 11px;font-size:13px}
   .signin{max-width:430px;flex-direction:column;align-items:center;text-align:center;gap:0;padding:30px 28px 24px}
   .signin .pokeball{width:52px;height:52px;margin-bottom:14px}
   .signin .pokeball:after{width:15px;height:15px}
   .signin h2{margin:0 0 10px;font-size:24px}
-  .signin p{color:var(--dim);margin:0 0 20px;line-height:1.55}
+  .signin p{color:var(--dim);margin:0 0 18px;line-height:1.55}
   .signin p b{color:var(--gold)}
-  .signin small{color:var(--dim);margin-top:14px;font-size:12px}
-  .gbtn{
-    display:inline-flex;align-items:center;gap:10px;background:#fff;color:#1f1f1f;border:0;border-radius:999px;
-    padding:11px 22px 11px 14px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;
-    box-shadow:0 4px 14px rgba(0,0,0,.35);
+  .signin small{color:var(--dim);margin-top:14px;font-size:12px;line-height:1.5}
+  .signin form{display:flex;gap:8px;width:100%;max-width:330px}
+  .signin form input{
+    flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;
+    padding:10px 12px;font:inherit;font-size:15px;outline:none;
   }
-  .gbtn:hover{filter:brightness(.95)}
-  .hint .egs button.gbtn{background:#fff;color:#1f1f1f;border:0;padding:11px 22px 11px 14px;font-size:15px}   /* beat the pill-button style */
-  .hint .egs button.gbtn:hover{color:#1f1f1f}
-  .gbtn i{
-    width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-style:normal;
-    font-weight:900;color:#fff;background:conic-gradient(#ea4335 0 25%,#fbbc05 0 50%,#34a853 0 75%,#4285f4 0);
+  .signin form input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,203,5,.22)}
+  .signin .names{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-size:12px;color:var(--dim);align-items:center}
+  .signin .names button{
+    background:var(--panel);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;
+    padding:5px 12px;border-radius:999px;cursor:pointer;
   }
+  .signin .names button:hover{border-color:var(--gold);color:var(--gold)}
   .toast{
     position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);z-index:200;opacity:0;pointer-events:none;
     background:var(--panel2);border:1px solid var(--gold);color:var(--text);border-radius:10px;padding:10px 16px;
@@ -344,11 +343,6 @@
 
 <footer>Cards &amp; images from the <a href="https://pokemontcg.io" target="_blank" rel="noopener">Pokémon TCG API</a>; sealed pack prices are TCGplayer market data via <a href="https://tcgcsv.com" target="_blank" rel="noopener">tcgcsv.com</a>, as of <span id="snap"></span>. Card images © The Pokémon Company.</footer>
 
-<!-- Firebase: Google sign-in + Firestore, only for saving collections. The rest of the site
-     works without it, so a failed load just leaves the collection unavailable. -->
-<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore-compat.js"></script>
 <script>
 const API = "https://api.pokemontcg.io/v2";
 
@@ -441,17 +435,16 @@ async function loadCards(setId){
 }
 
 /* ---------------- saved stuff ----------------
-   Your collection is saved to your account (see "accounts" below). Each card in it stores a small
-   snapshot (name, set, number, art, price) so the collection renders in full without re-fetching
-   every card. localStorage is only used for the sets cache, and to move a collection made before
-   accounts existed into the account the first time someone signs in. */
+   Your collection is saved under the name you signed in with, in this browser's localStorage
+   (see "accounts" below). Each card in it stores a small snapshot (name, set, number, art, price)
+   so the collection renders in full without re-fetching every card. */
 const store = {
   get(k, fallback){
     try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }catch(e){ return fallback; }
   },
   set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
 };
-let OWNED = {};                             // cardId -> snapshot, loaded from your account
+let OWNED = {};                             // cardId -> snapshot, for whoever is signed in
 
 function snapOf(c){
   const r = cardValue(c);
@@ -493,7 +486,7 @@ function ownBtn(id){
    slot:{p, s}. Pockets count left to right, top to bottom. One card per pocket — pockets that
    already hold a card show it and can't be picked. Taking a card out of the collection drops its
    slot with it. */
-let BINDER = 9;                             // pockets per page: 4, 9 or 12 (saved to your account)
+let BINDER = 9;                             // pockets per page: 4, 9 or 12 (saved with the collection)
 let binderPage = 1;                         // the page the card sheet's picker is showing
 const BINDER_COLS = {4:2, 9:3, 12:4};
 function slotLabel(sl){ return sl ? "Page " + sl.p + " · Slot " + sl.s : ""; }
@@ -1040,26 +1033,12 @@ function renderOwned(){
   const head = '<div class="set-head" style="margin-top:22px"><div style="flex:1"><h1>My collection</h1>'
     + '<div class="tagline">An online way to keep track of your Pokémon</div>';
   countEl.textContent = "";
-  if(!authReady){
-    app.innerHTML = head + '</div></div><div class="msg"><div class="spinner"></div>Checking whether you\'re signed in…</div>';
-    return;
-  }
   if(!USER){
     app.innerHTML = head + '</div></div>'
       + '<div class="hint" style="padding-top:40px"><h3>Sign in to make your collection</h3>'
       + 'You have to sign in so we can <b style="color:var(--gold)">save your stuff</b> — every card you add, and where it sits'
-      + ' in your binder.<br>It stays in your account, so it\'s there on any phone or computer you sign in on.'
-      + '<div class="egs" style="margin-top:22px"><button class="gbtn" onclick="signIn()"><i>G</i>Sign in with Google</button></div></div>';
-    return;
-  }
-  if(loadingCollection){
-    app.innerHTML = head + '</div></div><div class="msg"><div class="spinner"></div>Loading your collection…</div>';
-    return;
-  }
-  if(!collectionLoaded){
-    app.innerHTML = head + '</div></div><div class="msg">Your collection didn\'t load, so nothing can be changed or saved right now.'
-      + (collectionError ? '<br><span style="font-size:13px">(' + esc(collectionError) + ')</span>' : '')
-      + '<br><br><button class="btn-gold" onclick="retryCollection()">Try again</button></div>';
+      + ' in your binder.<br>Just type a name, no password needed. Your collection saves on this device under that name.'
+      + '<div class="egs" style="margin-top:22px"><button class="btn-gold" onclick="showSignIn()">Sign in</button></div></div>';
     return;
   }
   countEl.textContent = list.length + " card" + (list.length === 1 ? "" : "s");
@@ -1101,192 +1080,131 @@ function drawOwned(){
 }
 
 /* ---------------- accounts ----------------
-   Making a collection needs an account, so there's somewhere to save it: Google sign-in through
-   Firebase, and one Firestore document per person at collections/<uid> holding {owned, binder}.
-   Browsing sets, prices and card search never needs signing in.
-
-   FIREBASE_CONFIG comes from the Firebase console (Project settings → Your apps → Web app). These
-   values are public by design and fine to commit — the Firestore security rules are what stop one
-   person reading or writing another's collection. Until it's filled in, sign-in says it isn't
-   switched on. */
-const FIREBASE_CONFIG = {
-  apiKey: "",
-  authDomain: "",
-  projectId: "",
-  appId: ""
-};
-let USER = null;                 // the signed-in Firebase user
-let authReady = false;           // false until Firebase says whether anyone is signed in
-let loadingCollection = false;
-let collectionLoaded = false;    // never save unless the account's collection loaded first —
-let collectionError = "";        // writing after a failed load would wipe what's really there
+   Making a collection needs signing in, so there's someone to save it for. Signing in is just a
+   name — no password, no Google, no outside service — and each name gets its own collection and
+   binder layout, saved on this device:
+     pkProfiles = {<lowercased name>: {name, owned, binder}}     pkUser = the lowercased name signed in
+   It is not private: anyone on the same browser can sign in with the same name. The sign-in box
+   and the collection page say it saves on this device. Browsing sets, prices and card search never
+   needs signing in. */
+let USER = null;                 // {key, name} of whoever is signed in
 let pendingOwn = "";             // a card someone tried to add before signing in; added once they do
-let fbAuth = null, fbDb = null, saveTimer = null;
+const NAME_MAX = 24;
 
-function accountsOn(){ return !!(FIREBASE_CONFIG.apiKey && window.firebase && firebase.initializeApp); }
+function profiles(){ return store.get("pkProfiles", {}); }
+function writeProfiles(all){
+  try{ localStorage.setItem("pkProfiles", JSON.stringify(all)); return true; }
+  catch(e){ toast("Couldn't save — this browser's storage is full or turned off."); return false; }
+}
 
 function initAccounts(){
-  if(!accountsOn()){ authReady = true; drawAccount(); refreshView(); return; }
-  try{
-    firebase.initializeApp(FIREBASE_CONFIG);
-    fbAuth = firebase.auth();
-    fbDb = firebase.firestore();
-  }catch(e){ authReady = true; drawAccount(); refreshView(); return; }
-  fbAuth.getRedirectResult().catch(e => toast(authError(e)));
-  fbAuth.onAuthStateChanged(async u => {
-    USER = u; authReady = true;
-    OWNED = {}; BINDER = 9; collectionLoaded = false; collectionError = "";
-    if(u){
-      loadingCollection = true;
-      drawAccount(); refreshView();
-      await loadCollection();
-      loadingCollection = false;
-    }
-    drawAccount(); refreshView(); redrawSheet();
-    if(u && collectionLoaded && pendingOwn){
-      const id = pendingOwn; pendingOwn = "";
-      if(!OWNED[id] && CARDS.has(id)) toggleOwn(id);
-    }
-  });
-  // don't lose the last change if the tab closes inside the save delay
-  document.addEventListener("visibilitychange", () => { if(document.hidden) flushSave(); });
+  const key = store.get("pkUser", "");
+  const p = key && profiles()[key];
+  if(p) useProfile(key, p);
+  drawAccount(); refreshView();
+}
+function useProfile(key, p){
+  USER = {key: key, name: p.name};
+  OWNED = p.owned || {};
+  BINDER = BINDER_COLS[p.binder] ? p.binder : 9;
 }
 
-function colRef(uid){ return fbDb.collection("collections").doc(uid); }
-
-async function loadCollection(){
-  const uid = USER.uid;
-  let hadBinder = false;
-  try{
-    const snap = await colRef(uid).get();
-    if(!USER || USER.uid !== uid) return;          // signed out or switched while it loaded
-    const d = snap.exists ? snap.data() : {};
-    OWNED = d.owned || {};
-    hadBinder = !!BINDER_COLS[d.binder];
-    BINDER = hadBinder ? d.binder : 9;
-    collectionLoaded = true;
-  }catch(e){
-    collectionError = e.code === "permission-denied"
-      ? "the database refused — check the Firestore security rules" : (e.message || String(e));
-    return;
-  }
-  // A collection made on this browser before accounts existed moves into the account, once.
-  const old = store.get("pkOwned", null);
-  if(old && Object.keys(old).length){
-    const taken = {};
-    for(const k in OWNED){ const sl = OWNED[k].slot; if(sl) taken[sl.p + ":" + sl.s] = 1; }
-    let moved = 0;
-    for(const k in old){
-      if(OWNED[k]) continue;
-      const e = old[k];
-      if(e.slot && taken[e.slot.p + ":" + e.slot.s]) delete e.slot;   // one card per pocket
-      else if(e.slot) taken[e.slot.p + ":" + e.slot.s] = 1;
-      OWNED[k] = e; moved++;
-    }
-    const oldB = store.get("pkBinder", null);
-    if(!hadBinder && BINDER_COLS[oldB]) BINDER = oldB;
-    try{
-      await colRef(uid).set(collectionDoc());
-      localStorage.removeItem("pkOwned"); localStorage.removeItem("pkBinder");
-      if(moved) toast("Moved " + moved + " card" + (moved === 1 ? "" : "s") + " saved on this browser into your account.");
-    }catch(e){ /* keep the local copy and try again next sign-in */ }
-  }
-}
-function collectionDoc(){
-  return {owned: OWNED, binder: BINDER, updated: firebase.firestore.FieldValue.serverTimestamp()};
-}
-function retryCollection(){
-  if(!USER) return;
-  loadingCollection = true; collectionError = ""; refreshView();
-  loadCollection().then(() => { loadingCollection = false; refreshView(); redrawSheet(); });
-}
-
-/* Changes save a moment after the last click, so ticking ten cards is one write, not ten. */
 function saveCollection(){
-  if(!USER || !collectionLoaded) return;
-  const uid = USER.uid;
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    saveTimer = null;
-    if(!USER || USER.uid !== uid) return;
-    colRef(uid).set(collectionDoc()).catch(e => toast("Couldn't save your collection — " + (e.message || e)));
-  }, 500);
-}
-function flushSave(){
-  if(!saveTimer || !USER || !collectionLoaded) return Promise.resolve();
-  clearTimeout(saveTimer); saveTimer = null;
-  return colRef(USER.uid).set(collectionDoc()).catch(() => {});
+  if(!USER) return;
+  const all = profiles();
+  all[USER.key] = {name: USER.name, owned: OWNED, binder: BINDER};
+  writeProfiles(all);
 }
 
 /* The gate: anything that changes the collection asks this first. */
 function needSignIn(id){
-  if(USER && collectionLoaded) return false;
-  if(USER){
-    toast(loadingCollection ? "Still loading your collection — one second." : "Your collection didn't load, so nothing can be saved right now.");
-    return true;
-  }
+  if(USER) return false;
   pendingOwn = id || "";
   showSignIn();
   return true;
 }
 function showSignIn(){
   if(document.getElementById("signin")) return;
+  const names = Object.values(profiles()).map(p => p.name).slice(0, 8);
   document.body.insertAdjacentHTML("beforeend",
     '<div class="modal" id="signin" style="z-index:110" onclick="if(event.target===this)closeSignIn(true)">'
     + '<div class="sheet signin"><button class="x" onclick="closeSignIn(true)">&times;</button>'
     + '<div class="pokeball"></div>'
     + '<h2>Sign in to make your collection</h2>'
     + '<p>You have to sign in so we can <b>save your stuff</b> — every card you add, and where it sits in your binder.'
-    + ' It stays in your account, so it\'s there on any phone or computer you sign in on.</p>'
-    + '<button class="gbtn" onclick="signIn()"><i>G</i>Sign in with Google</button>'
-    + '<small>Browsing sets, prices and card search never needs an account.</small>'
+    + ' Just type a name, no password needed.</p>'
+    + '<form onsubmit="signIn(event)">'
+    +   '<input id="signname" maxlength="' + NAME_MAX + '" placeholder="Your name" autocomplete="nickname" aria-label="Your name"'
+    +     ' onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();signIn();}">'
+    +   '<button class="btn-gold" type="submit">Sign in</button>'
+    + '</form>'
+    + (names.length ? '<div class="names">Signed in here before?' + names.map(n =>
+        '<button type="button" onclick="signInAs(this.dataset.n)" data-n="' + esc(n) + '">' + esc(n) + '</button>').join("") + '</div>' : '')
+    + '<small>Your collection saves on this device under your name.<br>'
+    + 'Browsing sets, prices and card search never needs signing in.</small>'
     + '</div></div>');
+  const inp = document.getElementById("signname");
+  if(inp) inp.focus();
 }
 function closeSignIn(cancelled){
   const m = document.getElementById("signin"); if(m) m.remove();
   if(cancelled) pendingOwn = "";
 }
-async function signIn(){
-  if(!accountsOn()){ toast("Sign-in isn't switched on for this site yet."); return; }
-  const provider = new firebase.auth.GoogleAuthProvider();
-  try{
-    await fbAuth.signInWithPopup(provider);
-    closeSignIn(false);
-  }catch(e){
-    const code = e.code || "";
-    if(code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") return;
-    if(code === "auth/popup-blocked" || code === "auth/operation-not-supported-in-this-environment"){
-      try{ await fbAuth.signInWithRedirect(provider); return; }catch(e2){ toast(authError(e2)); return; }
+function signInAs(name){
+  const inp = document.getElementById("signname");
+  if(inp) inp.value = name;
+  signIn();
+}
+function signIn(ev){
+  if(ev) ev.preventDefault();
+  const inp = document.getElementById("signname");
+  const name = ((inp && inp.value) || "").trim().replace(/\s+/g, " ").slice(0, NAME_MAX);
+  if(!name){ toast("Type a name to sign in."); if(inp) inp.focus(); return; }
+  const key = name.toLowerCase();
+  const all = profiles();
+  const isNew = !all[key];
+  if(isNew) all[key] = {name: name, owned: {}, binder: 9};
+
+  // A collection saved on this browser before sign-in existed moves into the first name signed in.
+  const old = store.get("pkOwned", null);
+  let moved = 0;
+  if(old && Object.keys(old).length){
+    const mine = all[key], taken = {};
+    for(const k in mine.owned){ const sl = mine.owned[k].slot; if(sl) taken[sl.p + ":" + sl.s] = 1; }
+    for(const k in old){
+      if(mine.owned[k]) continue;
+      const e = old[k];
+      if(e.slot && taken[e.slot.p + ":" + e.slot.s]) delete e.slot;     // one card per pocket
+      else if(e.slot) taken[e.slot.p + ":" + e.slot.s] = 1;
+      mine.owned[k] = e; moved++;
     }
-    toast(authError(e));
+    const oldB = store.get("pkBinder", null);
+    if(isNew && BINDER_COLS[oldB]) mine.binder = oldB;
+  }
+  if(!writeProfiles(all)) return;
+  if(old){ localStorage.removeItem("pkOwned"); localStorage.removeItem("pkBinder"); }
+  store.set("pkUser", key);
+  useProfile(key, all[key]);
+
+  closeSignIn(false);
+  drawAccount(); refreshView(); redrawSheet();
+  toast((isNew ? "Hi " + USER.name + "! Your collection saves on this device." : "Welcome back, " + USER.name + "!")
+    + (moved ? " Moved " + moved + " card" + (moved === 1 ? "" : "s") + " you'd already saved into it." : ""));
+  if(pendingOwn){
+    const id = pendingOwn; pendingOwn = "";
+    if(!OWNED[id] && CARDS.has(id)) toggleOwn(id);
   }
 }
-async function signOut(){
-  await flushSave();
-  pendingOwn = "";
-  if(fbAuth) await fbAuth.signOut();
-}
-function authError(e){
-  const code = (e && e.code) || "";
-  if(code === "auth/unauthorized-domain")
-    return "This web address isn't allowed to sign in yet — add it in Firebase under Authentication → Settings → Authorized domains.";
-  if(code === "auth/operation-not-supported-in-this-environment")
-    return "Sign-in needs the site opened from a web address, not straight from a file.";
-  if(code === "auth/network-request-failed") return "Couldn't reach Google to sign in — check your connection.";
-  return "Couldn't sign in — " + ((e && e.message) || "something went wrong") + ".";
+function signOut(){
+  USER = null; OWNED = {}; BINDER = 9; pendingOwn = "";
+  try{ localStorage.removeItem("pkUser"); }catch(e){}
+  drawAccount(); refreshView(); redrawSheet();
 }
 function drawAccount(){
   const el = document.getElementById("acct"); if(!el) return;
-  if(!authReady){ el.innerHTML = ""; return; }
-  if(USER){
-    const name = (USER.displayName || USER.email || "You").split(" ")[0];
-    el.innerHTML = '<span class="who" title="' + esc(USER.email || "") + '">'
-      + (USER.photoURL ? '<img src="' + esc(USER.photoURL) + '" alt="" referrerpolicy="no-referrer">' : '')
-      + esc(name) + '</span>'
-      + '<button class="back" onclick="signOut()">Sign out</button>';
-  }else{
-    el.innerHTML = '<button class="btn-gold" onclick="showSignIn()">Sign in</button>';
-  }
+  el.innerHTML = USER
+    ? '<span class="who">' + esc(USER.name) + '</span><button class="back" onclick="signOut()">Sign out</button>'
+    : '<button class="btn-gold" onclick="showSignIn()">Sign in</button>';
 }
 function redrawSheet(){
   if(!modalCard || !document.getElementById("modal")) return;
