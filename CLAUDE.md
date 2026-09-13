@@ -145,17 +145,27 @@ for a 2019 promo priced off Cardmarket. Never show an estimate as if it were a r
 to say why: "you have to sign in so we can save your stuff". Browsing sets, prices and card search
 never needs signing in.
 
-Signing in is **just a name** — no password, no Google, no outside service. This replaced a
+Signing in is **a name and a password** — no Google, no outside service. This replaced a
 Firebase (Google sign-in + Firestore) version on purpose: setting up Firebase needs an adult's
 Google account, which the owner doesn't have. Don't reintroduce Firebase or any login provider
 unless the user asks for it again. All of it is localStorage on one device:
 
-- `pkProfiles` = `{<lowercased name>: {name, owned: {cardId: snapshot}, binder: 4|9|12}}`
+- `pkProfiles` = `{<lowercased name>: {name, owned: {cardId: snapshot}, binder: 4|9|12, pw: {salt, hash, it}}}`
 - `pkUser` = the lowercased name currently signed in (so a reload keeps you signed in)
 
 Names are matched case-insensitively and trimmed ("  aSH " signs in as Ash), max 24 characters.
-It is **not private** — anyone on the same browser can sign in with the same name, and the box
-lists names used on this device ("Signed in here before?") as one-tap buttons. The sign-in box and
+
+**Passwords** (the user asked for "a protective password thing"): the password is never stored.
+`pw` is PBKDF2-SHA256, 150,000 iterations, 16-byte random salt, via `crypto.subtle` (`hashPw`), and
+`it` is stored so the count can be raised later without breaking old names. Minimum 4 characters.
+The box adapts as you type a name (`signMode`): an existing name just asks for its password; a new
+name — or one made in the few minutes the site was live without passwords — must pick one and type
+it twice. `saveCollection` merges into the profile with `Object.assign` so it never drops `pw`.
+Be honest about what this is: it keeps other people using the same device out of a collection
+**through the site**. It is not encryption — the collection is plain JSON in localStorage that dev
+tools can read — and there's **no password reset** (no server), which the box says. Don't add a
+"forgot password" that bypasses it. Names used on this device are listed as buttons ("Signed in
+here before?"); tapping one fills the name and focuses the password box. The sign-in box and
 the signed-out collection page both say the collection saves on this device; keep that honest —
 never claim it syncs or follows you to other devices.
 
@@ -164,8 +174,9 @@ How it hangs together (`initAccounts`, run after `loadSets`):
 - `needSignIn(id)` is the gate every change calls first (`toggleOwn`, `setSlot`, `clearSlot`,
   `setBinderSize`). Signed out, it opens the sign-in box (`showSignIn`) and remembers the card in
   `pendingOwn`, which is added straight after signing in. Closing the box without signing in clears it.
-- `signIn()` reads `#signname`. The input has its own Enter handler (with `preventDefault`) as well
-  as the form's `onsubmit` — in testing, Enter didn't submit the form on its own.
+- `signIn()` (async — hashing) reads `#signname`, `#signpw`, `#signpw2`; errors show inline in
+  `#signerr`. Each input has its own Enter handler (with `preventDefault`) as well as the form's
+  `onsubmit` — in testing, Enter didn't submit the form on its own.
 - `saveCollection()` writes the signed-in profile back to `pkProfiles` immediately; `writeProfiles`
   toasts if storage is full or blocked.
 - **Migration:** a pre-sign-in `pkOwned` / `pkBinder` is merged into the first name signed in on

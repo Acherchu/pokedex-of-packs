@@ -292,12 +292,17 @@
   .signin p{color:var(--dim);margin:0 0 18px;line-height:1.55}
   .signin p b{color:var(--gold)}
   .signin small{color:var(--dim);margin-top:14px;font-size:12px;line-height:1.5}
-  .signin form{display:flex;gap:8px;width:100%;max-width:330px}
+  .signin form{display:flex;flex-direction:column;gap:8px;width:100%;max-width:300px}
   .signin form input{
-    flex:1;min-width:0;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;
+    width:100%;background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:10px;
     padding:10px 12px;font:inherit;font-size:15px;outline:none;
   }
   .signin form input:focus{border-color:var(--gold);box-shadow:0 0 0 3px rgba(255,203,5,.22)}
+  .signin form .btn-gold{margin-top:2px}
+  .signin form .btn-gold:disabled{opacity:.6;cursor:default}
+  .signin .signhint{font-size:12.5px;color:var(--gold);min-height:0;text-align:left}
+  .signin .signerr{font-size:13px;color:#ffb4b4;font-weight:600;text-align:left}
+  .signin .signhint:empty, .signin .signerr:empty{display:none}
   .signin .names{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:14px;font-size:12px;color:var(--dim);align-items:center}
   .signin .names button{
     background:var(--panel);border:1px solid var(--line);color:var(--text);font:inherit;font-size:13px;
@@ -1037,7 +1042,7 @@ function renderOwned(){
     app.innerHTML = head + '</div></div>'
       + '<div class="hint" style="padding-top:40px"><h3>Sign in to make your collection</h3>'
       + 'You have to sign in so we can <b style="color:var(--gold)">save your stuff</b> — every card you add, and where it sits'
-      + ' in your binder.<br>Just type a name, no password needed. Your collection saves on this device under that name.'
+      + ' in your binder.<br>Pick a name and a password. Your collection saves on this device under that name.'
       + '<div class="egs" style="margin-top:22px"><button class="btn-gold" onclick="showSignIn()">Sign in</button></div></div>';
     return;
   }
@@ -1080,16 +1085,18 @@ function drawOwned(){
 }
 
 /* ---------------- accounts ----------------
-   Making a collection needs signing in, so there's someone to save it for. Signing in is just a
-   name — no password, no Google, no outside service — and each name gets its own collection and
-   binder layout, saved on this device:
-     pkProfiles = {<lowercased name>: {name, owned, binder}}     pkUser = the lowercased name signed in
-   It is not private: anyone on the same browser can sign in with the same name. The sign-in box
-   and the collection page say it saves on this device. Browsing sets, prices and card search never
-   needs signing in. */
+   Making a collection needs signing in, so there's someone to save it for. Signing in is a name and
+   a password — no Google, no outside service — and each name gets its own collection and binder
+   layout, saved on this device:
+     pkProfiles = {<lowercased name>: {name, owned, binder, pw:{salt, hash, it}}}
+     pkUser     = the lowercased name signed in (a reload keeps you signed in)
+   The password is never stored: pw is a PBKDF2-SHA256 hash with a random salt. It keeps other
+   people using this device out of your collection on the site; it is not encryption — the
+   collection itself is plain JSON that browser dev tools could read. There's no reset (no server),
+   and the sign-in box says so. Browsing sets, prices and card search never needs signing in. */
 let USER = null;                 // {key, name} of whoever is signed in
 let pendingOwn = "";             // a card someone tried to add before signing in; added once they do
-const NAME_MAX = 24;
+const NAME_MAX = 24, PW_MIN = 4, PW_ITER = 150000;
 
 function profiles(){ return store.get("pkProfiles", {}); }
 function writeProfiles(all){
@@ -1112,7 +1119,7 @@ function useProfile(key, p){
 function saveCollection(){
   if(!USER) return;
   const all = profiles();
-  all[USER.key] = {name: USER.name, owned: OWNED, binder: BINDER};
+  all[USER.key] = Object.assign({}, all[USER.key], {name: USER.name, owned: OWNED, binder: BINDER});   // keeps pw
   writeProfiles(all);
 }
 
@@ -1126,22 +1133,27 @@ function needSignIn(id){
 function showSignIn(){
   if(document.getElementById("signin")) return;
   const names = Object.values(profiles()).map(p => p.name).slice(0, 8);
+  const enter = ' onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();signIn();}"';
   document.body.insertAdjacentHTML("beforeend",
     '<div class="modal" id="signin" style="z-index:110" onclick="if(event.target===this)closeSignIn(true)">'
     + '<div class="sheet signin"><button class="x" onclick="closeSignIn(true)">&times;</button>'
     + '<div class="pokeball"></div>'
     + '<h2>Sign in to make your collection</h2>'
     + '<p>You have to sign in so we can <b>save your stuff</b> — every card you add, and where it sits in your binder.'
-    + ' Just type a name, no password needed.</p>'
-    + '<form onsubmit="signIn(event)">'
-    +   '<input id="signname" maxlength="' + NAME_MAX + '" placeholder="Your name" autocomplete="nickname" aria-label="Your name"'
-    +     ' onkeydown="if(event.key===&quot;Enter&quot;){event.preventDefault();signIn();}">'
-    +   '<button class="btn-gold" type="submit">Sign in</button>'
+    + ' Your password keeps other people on this device out of your collection.</p>'
+    + '<form onsubmit="signIn(event)" autocomplete="on">'
+    +   '<input id="signname" maxlength="' + NAME_MAX + '" placeholder="Your name" autocomplete="username" aria-label="Your name"'
+    +     ' oninput="signMode()"' + enter + '>'
+    +   '<input id="signpw" type="password" placeholder="Password" autocomplete="current-password" aria-label="Password"' + enter + '>'
+    +   '<input id="signpw2" type="password" placeholder="Type the password again" autocomplete="new-password" aria-label="Type the password again" hidden' + enter + '>'
+    +   '<div class="signhint" id="signhint"></div>'
+    +   '<div class="signerr" id="signerr"></div>'
+    +   '<button class="btn-gold" id="signbtn" type="submit">Sign in</button>'
     + '</form>'
     + (names.length ? '<div class="names">Signed in here before?' + names.map(n =>
         '<button type="button" onclick="signInAs(this.dataset.n)" data-n="' + esc(n) + '">' + esc(n) + '</button>').join("") + '</div>' : '')
-    + '<small>Your collection saves on this device under your name.<br>'
-    + 'Browsing sets, prices and card search never needs signing in.</small>'
+    + '<small>Your collection saves on this device under your name. There\'s no way to reset a forgotten'
+    + ' password, so pick one you\'ll remember.<br>Browsing sets, prices and card search never needs signing in.</small>'
     + '</div></div>');
   const inp = document.getElementById("signname");
   if(inp) inp.focus();
@@ -1150,20 +1162,88 @@ function closeSignIn(cancelled){
   const m = document.getElementById("signin"); if(m) m.remove();
   if(cancelled) pendingOwn = "";
 }
+function cleanName(v){ return String(v || "").trim().replace(/\s+/g, " ").slice(0, NAME_MAX); }
+
+/* The box adapts as you type a name: an existing name just needs its password; a new name (or one
+   made before passwords existed) needs one picked and typed twice, so a typo can't lock you out. */
+function signMode(){
+  const name = cleanName((document.getElementById("signname") || {}).value);
+  const prof = name ? profiles()[name.toLowerCase()] : null;
+  const mode = !name ? "" : !prof ? "new" : !prof.pw ? "set" : "have";
+  const pw2 = document.getElementById("signpw2"), pw = document.getElementById("signpw");
+  const hint = document.getElementById("signhint"), btn = document.getElementById("signbtn");
+  if(!pw2) return mode;
+  pw2.hidden = !(mode === "new" || mode === "set");
+  pw.setAttribute("autocomplete", mode === "have" ? "current-password" : "new-password");
+  hint.textContent = mode === "new" ? "New name — pick a password (at least " + PW_MIN + " characters) and type it twice."
+    : mode === "set" ? prof.name + " doesn't have a password yet — pick one now." : "";
+  btn.textContent = mode === "new" ? "Make my name" : mode === "set" ? "Set password & sign in" : "Sign in";
+  document.getElementById("signerr").textContent = "";
+  return mode;
+}
 function signInAs(name){
   const inp = document.getElementById("signname");
   if(inp) inp.value = name;
-  signIn();
+  signMode();
+  const pw = document.getElementById("signpw");
+  if(pw) pw.focus();
 }
-function signIn(ev){
+function signErr(msg, el){
+  const e = document.getElementById("signerr");
+  if(e) e.textContent = msg;
+  if(el) el.focus();
+}
+
+const toB64 = buf => btoa(String.fromCharCode.apply(null, new Uint8Array(buf)));
+const fromB64 = str => Uint8Array.from(atob(str), ch => ch.charCodeAt(0));
+async function hashPw(pw, saltB64, iterations){
+  const salt = saltB64 ? fromB64(saltB64) : crypto.getRandomValues(new Uint8Array(16));
+  const it = iterations || PW_ITER;
+  const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({name: "PBKDF2", hash: "SHA-256", salt: salt, iterations: it}, key, 256);
+  return {salt: toB64(salt), hash: toB64(bits), it: it};
+}
+
+let signBusy = false;
+async function signIn(ev){
   if(ev) ev.preventDefault();
-  const inp = document.getElementById("signname");
-  const name = ((inp && inp.value) || "").trim().replace(/\s+/g, " ").slice(0, NAME_MAX);
-  if(!name){ toast("Type a name to sign in."); if(inp) inp.focus(); return; }
+  if(signBusy) return;
+  const nameIn = document.getElementById("signname"), pwIn = document.getElementById("signpw"),
+        pw2In = document.getElementById("signpw2"), btn = document.getElementById("signbtn");
+  if(!nameIn) return;
+  const name = cleanName(nameIn.value);
+  if(!name) return signErr("Type a name to sign in.", nameIn);
+  if(!(window.crypto && crypto.subtle)) return signErr("This browser can't keep passwords safe here, so signing in is off. Open the site from its web address.");
+  const pw = pwIn.value;
   const key = name.toLowerCase();
+  const mode = signMode();
   const all = profiles();
-  const isNew = !all[key];
+  const prof = all[key];
+  let pwRecord = null;
+
+  if(mode === "have"){
+    if(!pw) return signErr("Type your password.", pwIn);
+  }else{
+    if(pw.length < PW_MIN) return signErr("Pick a password with at least " + PW_MIN + " characters.", pwIn);
+    if(pw !== pw2In.value){ pw2In.value = ""; return signErr("Those two passwords don't match — type it again.", pw2In); }
+  }
+  signBusy = true; btn.disabled = true;
+  try{
+    if(mode === "have"){
+      const h = await hashPw(pw, prof.pw.salt, prof.pw.it);
+      if(h.hash !== prof.pw.hash){ pwIn.value = ""; return signErr("That's not the password for " + prof.name + ".", pwIn); }
+    }else{
+      pwRecord = await hashPw(pw);
+    }
+  }catch(e){
+    return signErr("Couldn't check the password — " + (e.message || e));
+  }finally{
+    signBusy = false; if(btn) btn.disabled = false;
+  }
+
+  const isNew = !prof;
   if(isNew) all[key] = {name: name, owned: {}, binder: 9};
+  if(pwRecord) all[key].pw = pwRecord;
 
   // A collection saved on this browser before sign-in existed moves into the first name signed in.
   const old = store.get("pkOwned", null);

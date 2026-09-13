@@ -36,7 +36,7 @@ an `EST` tag, and a note in the card sheet explaining exactly where the figure c
 Everything you add collects in one place with its total value, and you can search it. Click a
 card in your collection to record which page and pocket it's in in your real binder.
 
-You have to **sign in** to make a collection so it can be saved — just type a name, no password.
+You have to **sign in** to make a collection so it can be saved — pick a name and a password.
 Your collection saves on that device under your name. Browsing sets, prices and card search never
 needs signing in.
 
