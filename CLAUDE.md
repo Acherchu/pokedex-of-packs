@@ -285,6 +285,13 @@ picks the Pokémon (debounced 500ms, `pickSpecies`), with example buttons.
   **skip names that contain a Pokémon already in the line** ("Charizard G" is just Charizard's LV.X
   cards). Failed loads retry after 3s, then show a "Couldn't load … — try again" chip (`colMissing`).
   Line chips are ordered by evolution depth (`colDepths`) and toggle a Pokémon in/out (`colHidden`).
+- **Numbered tiles**: `findTile(c, rank)` puts the gold `.rankmark` 1…n on each card in the chosen sort
+  (same badge as My collection). Other callers pass no rank and get no number.
+- **"No promos or McDonald's cards"** checkbox (`colNoPromo`, remembered in `pkColNoPromo`): `isPromo`
+  drops Black Star Promo sets, McDonald's Collections, the other giveaway sets (POP Series, Futsal,
+  Pokémon Rumble, Best of Game, Trick or Trade) and rarity "Promo". Applied in `colVisible`, so the
+  stats, value estimate and history graph all follow it; the label says how many were left out.
+  Pikachu alone: 177 → 96 cards.
   Pichu isn't found from Pikachu — baby Pokémon cards don't list what they evolve into.
 - Stats: cards, cost to collect all (each card at its cheapest version via `cardValue`; estimates
   counted and flagged ~), what you already own (and its value), still to get. Sort: evolution order,

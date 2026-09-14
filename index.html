@@ -1278,8 +1278,29 @@ function colVisible(){
   const names = Object.keys(colCards).filter(n => (colEvo || n === colName) && !colHidden.has(n))
     .sort((a, b) => depth[a] - depth[b] || a.localeCompare(b));
   const seen = new Set(), list = [];
-  names.forEach((n, i) => (colCards[n] || []).forEach(c => { if(!seen.has(c.id)){ seen.add(c.id); list.push({c: c, line: i}); } }));
-  return {names: names, depth: depth, list: list};
+  let promos = 0;
+  names.forEach((n, i) => (colCards[n] || []).forEach(c => {
+    if(seen.has(c.id)) return;
+    seen.add(c.id);
+    if(colNoPromo && isPromo(c)){ promos++; return; }
+    list.push({c: c, line: i});
+  }));
+  return {names: names, depth: depth, list: list, promos: promos};
+}
+/* Promo and McDonald's cards — the user asked for a way to leave them out. Black Star promo sets
+   ("SWSH Black Star Promos", "Wizards Black Star Promos"…) and every "McDonald's Collection" set,
+   plus the other giveaway sets (POP Series, Futsal, Pokémon Rumble, Best of Game, Trick or Trade) and
+   any card whose rarity is Promo. */
+let colNoPromo = store.get("pkColNoPromo", false);
+function isPromo(c){
+  const s = c.set || {};
+  return /promo|mcdonald|pop series|futsal|rumble|best of game|trick or trade/i.test(s.name || "")
+    || /^mcd/i.test(s.id || "") || /^promo$/i.test(c.rarity || "");
+}
+function setColNoPromo(on){
+  colNoPromo = !!on;
+  store.set("pkColNoPromo", colNoPromo);
+  keepScroll(renderCollecting);
 }
 function colSortList(list){
   const v = x => { const r = cardValue(x.c); return r ? r.v : null; };
@@ -1336,6 +1357,8 @@ function renderCollecting(){
     + '<div class="set-head" style="margin-top:14px;display:block">'
     +   '<div class="colhead"><h2>' + esc(colName) + '</h2>'
     +     '<label class="colevo"><input type="checkbox"' + (colEvo ? " checked" : "") + ' onchange="setColEvo(this.checked)">Also collect its evolutions</label>'
+    +     '<label class="colevo"><input type="checkbox"' + (colNoPromo ? " checked" : "") + ' onchange="setColNoPromo(this.checked)">No promos or McDonald\'s cards'
+    +       (colNoPromo && vis.promos ? ' <span style="color:var(--dim);font-weight:400">(' + vis.promos + ' left out)</span>' : '') + '</label>'
     +   '</div>'
     +   lineChips
     +   '<div class="stats" style="margin-top:12px">'
@@ -1359,7 +1382,7 @@ function renderCollecting(){
     + '</div>'
     + (colHistory ? '<div class="future" id="colhist">' + colHistoryHTML(cards.map(x => x.c)) + '</div>' : '')
     + (colFuture ? colFutureHTML(cards.map(x => x.c), total, estN) : '')
-    + '<div class="found">' + colSortList(cards).map(findTile).join("") + '</div>';
+    + '<div class="found">' + colSortList(cards).map((c, i) => findTile(c, i + 1)).join("") + '</div>';
   if(colHistory) drawHistoryChart();
 }
 /* ---- price history ----
@@ -1655,7 +1678,7 @@ function drawFound(){
   el.innerHTML = searchHits.map(findTile).join("");
 }
 let tileHolo = false;   // while true, tiles show the holofoil price (the card sheet's holo list)
-function findTile(c){
+function findTile(c, rank){
   const s = c.set || {};
   const h = tileHolo && ((c.tcgplayer || {}).prices || {}).holofoil;
   const hv = h ? (h.market != null ? h.market : h.mid) : null;
@@ -1663,6 +1686,7 @@ function findTile(c){
   const sym = s.images && s.images.symbol ? '<img src="' + s.images.symbol + '" alt="" loading="lazy">' : '';
   return '<div class="find" onclick="openCard(\'' + c.id + '\')" style="position:relative">'
     + '<img class="art" src="' + ((c.images && c.images.small) || "") + '" alt="' + esc(c.name) + '" loading="lazy">'
+    + (rank ? '<div class="rankmark" title="Number ' + rank + ' in this order">' + rank + '</div>' : '')
     + (owns(c.id) ? '<div class="ownmark">' + ownMark(c.id) + '</div>' : '')
     + '<div class="fnm">' + esc(c.name) + '</div>'
     + '<div class="fset">' + sym + '<span>' + esc(s.name || "") + ' · #' + esc(String(c.number)) + '</span></div>'
