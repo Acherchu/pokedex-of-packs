@@ -31,6 +31,8 @@ Sections, switched from the header:
   Not needed to run the site.
 - `update-price-history.py` — dev tool. Builds `price-history.json` (below). Needs `py7zr`
   (`python -m pip install --user py7zr`); caches snapshots in `.history-cache/` (git-ignored).
+- `check-pack-sellers.js` — dev tool, run in a browser on tcgplayer.com. Refreshes `PACK_PICKS`
+  (the cheapest trusted single pack per set; see Pack prices).
 - `price-history.json` — past card prices for the Collecting graph (~550 KB). The one deliberate
   exception to "one file": it's fetched only when that graph opens, so nothing else is slowed, and
   the site still works without it (opened from disk, the graph says it needs the website).
@@ -107,20 +109,33 @@ don't "simplify" them away:
 - `Art Bundle`, `Blister`, `Sleeved`, `Mini`, `Case` and `Display` products are excluded; they
   aren't the plain pack a person buys.
 
-**Cheapest pack you can actually buy.** The user asked for the price of one single pack, "currently
-in stock", from "trusted websites and not a scam". The script's `in_stock()` also stores, for the
-plain single booster pack (same `candidates()` filter as the market price — no bundles, sleeved
-packs, code cards): `l`/`lu` = the lowest in-stock TCGplayer listing and its product id, `d`/`du` =
-the lowest TCGplayer Direct listing (vetted sellers TCGplayer ships for). **Direct had no sealed
-packs at all** when checked (0 of 115 sets), so in practice it's `l`. `p` stays the recent average
-sale. In the page, `packInfo()` shows the in-stock price as the set's pack price (tiles say
-"cheapest in stock on TCGplayer"; the set header has a buy box with **Buy on TCGplayer ↗** →
-`https://www.tcgplayer.com/product/<lu>`), and the "Priciest pack" sort uses it. **Scam guard:** a
-listing under `PACK_SUS` (0.5) × the average sale is never shown as the price — it's flagged ("far too
-cheap for a real sealed pack") and the average is shown instead (hit: Chaos Rising $0.10 vs $5.87,
-two others). Under 0.75× gets a "check the seller's rating" note. In stock means **as of the last
-script run** (`PACK_PRICES.d`), and the page says that date — it is not live (tcgcsv has no CORS).
-TCGplayer is the only store with free data here; Pokémon Center, Target etc. have no free price feed.
+**Cheapest pack you can actually buy — from a seller with good reviews.** The user asked for the
+price of one single pack, in stock, "from trusted websites and not a scam", then: "if the cheapest one
+looks fake don't put it there at all, put a more expensive one — and look and carefully read reviews".
+
+What the data can't do: tcgcsv's `lowPrice` is just the lowest listing, and it's often **not a real
+English pack** — on 2026-09-13 the cheapest "Surging Sparks Booster Pack" listings were Korean and
+Chinese packs sellers list on the English pack's page as custom photo listings, and Chaos Rising's
+was $0.10. TCGplayer Direct had no sealed packs at all. TCGplayer's listing API 403s scripts.
+
+So `check-pack-sellers.js` (run by hand in a normal browser tab on tcgplayer.com — instructions at its
+top) reads each pack's product page listings cheapest-first, one page every 1.5s, and takes the first
+listing that passes: plain catalog listing marked Unopened (**no custom photo listings**, no seller
+name hinting at foreign/weighed/resealed), seller **99%+ feedback from 500+ sales**, and price +
+shipping ≥ half the usual sale price. Output is baked into `index.html` as **`PACK_PICKS`** (own
+`// end-pack-picks` marker — `update-pack-prices.py` doesn't touch it), `{d, s: {setId: [price, ship,
+seller, sellerPath, rating, sales, skippedForeignOrCustom, skippedReviews, skippedTooCheap]}}`, or
+`[0, skipped…]` when nothing passed. 2026-09-13 run: 115 packs, **101 with a trusted seller**, 14
+without (mostly old sets whose few sellers had <500 sales).
+
+In the page (`packInfo` / `priceLabel` / `buyBox`): the pack price is the trusted pick's price +
+shipping ("in stock · trusted seller"); the set header's buy box names the seller (linked to their
+TCGplayer page), their rating and sales, what was skipped and why, the usual price, and **Buy on
+TCGplayer ↗** to the pack's page with a note to pick that seller's listing (listings can't be deep-
+linked). **The raw cheapest listing is never shown.** No trusted pick → the usual sale price, labelled
+"no trusted seller in stock". The "Priciest pack" sort uses the same number. `PACK_PRICES.s[id].lu`
+(from `update-pack-prices.py`) is still the product id used for the link and the checker's input.
+**It's a snapshot**: re-run the checker to refresh; it goes stale as listings sell.
 
 114 of 174 sets end up with a pack price. The rest show "not sold in packs", which is accurate —
 promos, Trainer Galleries, Shiny Vaults and Energies were never sold that way.
