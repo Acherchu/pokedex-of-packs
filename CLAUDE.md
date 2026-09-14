@@ -140,6 +140,22 @@ linked). **The raw cheapest listing is never shown.** No trusted pick → the us
 `PICK_MAX_DAYS` (7) — packs then show the daily-refreshed usual price, "updated daily", with a "See it
 on TCGplayer" link and no seller recommended. Re-run the checker weekly to keep trusted sellers.
 
+**Box deals (yellow).** The user asked to be shown, in yellow under the pack price, when "a trainer box
+or something is worth it rather than buying the packs". `update-pack-prices.py` bakes
+`PACK_PRICES.s[id].o = {kind: [marketPrice, packs, productId]}` — kinds `b` Booster Box, `h` Half
+Booster Box, `e` Elite Trainer Box, `c` Pokémon Center ETB, `u` Booster Bundle (`box_kind`; cases,
+displays, "Set of", sleeved and art bundles skipped), cheapest per pack of each kind. **Pack count comes
+from the product description** (`packs_in`: "contains 36 booster packs", "• 9 Pokémon TCG: … booster
+packs"); only when it says nothing: box 36, half 18, bundle 6, ETB 9 / PC ETB 11 from Scarlet & Violet on,
+ETB 8 before that only for main sets — special-set ETBs (Hidden Fates, Celebrations…) have 10, so an
+unstated count there is skipped, not guessed. In the page `boxDeals` compares each pack in a box
+against `packPrice(id)` (the pack price the page shows) and keeps those ≥ `DEAL_MIN` (5%) cheaper:
+`dealLine` adds "📦 $9.71 a pack in a booster bundle · save 32%" to the set tile, `dealBox` lists every
+deal under the buy box (price, packs, % and $ saved, ETB extras, "See it ↗" to the product) — or a dim
+"single packs are the cheapest way right now" when a set has boxes but none are cheaper. Box prices are
+market prices before shipping, and it says so. 2026-09-14: 24 sets with a deal (mostly booster boxes).
+Watch for the bash-heredoc trap when editing the script: `\\b` became a literal backspace once.
+
 **Delivery time.** The user asked for the site to say "how long the order will take to get to your
 house". Every buy box ends with `deliveryLine()`: dates worked out from the viewer's today — TCGplayer
 sellers must ship standard orders within 2 business days (Mon–Fri, not US federal holidays —
@@ -391,7 +407,9 @@ Cards go in from a **card search result** (`+ Add to collection` on each `findTi
 or a collection tile. **Sorting** (`#osort`, `sortOwned`, remembered in `pkOwnedSort`): Newest added
 (default), Price high→low, Price low→high, Name A–Z, Set & card number, Binder order, Oldest added.
 "Added" order is `OWNED` key insertion order — card ids aren't integer-like, so object key order holds.
-Price sorts use the value saved with the card (`snap.v`) — what it was worth when added, the same
+**Every tile is numbered** 1…n top to bottom in whatever order is picked (gold `.rankmark`,
+top-left; the user asked for it). The number is the card's place in the *whole* sorted collection,
+so searching keeps each card's number rather than renumbering the matches. Price sorts use the value saved with the card (`snap.v`) — what it was worth when added, the same
 number the tile shows — with unpriced cards last in both directions. The collection page leads with the tagline "An online way to keep track of
 your Pokémon" in both its empty and filled states. Its search box (`#oq`, `drawOwned`) filters the
 snapshots in `OWNED` locally — name, set or rarity contains the term, or the number matches

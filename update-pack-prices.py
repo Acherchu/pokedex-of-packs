@@ -9,7 +9,7 @@ PACK_PRICES block inside index.html, keeping the site a single double-clickable 
 
 Prices come from TCGplayer market data via tcgcsv.com (free, no key).
 """
-import json, re, statistics, sys, time, unicodedata, urllib.request, difflib
+import html as htmllib, json, re, statistics, sys, time, unicodedata, urllib.request, difflib
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -112,6 +112,63 @@ def in_stock(products, rows, suffix):
     return out
 
 
+# Boxes that are just packs (plus extras), for "is a box cheaper per pack than single packs?".
+# code, name ending (after dropping [..] and (..) qualifiers), packs when the description doesn't say
+BOX_KINDS = (
+    ("h", "half booster box", 18),
+    ("b", "booster box", 36),
+    ("c", "pokemon center elite trainer box", None),
+    ("e", "elite trainer box", None),
+    ("u", "booster bundle", 6),
+)
+BOX_SKIP = ("case", "display", "set of", "sleeved", "art bundle", "code card", "bulk")
+
+
+def box_kind(name):
+    n = name.lower()
+    if any(x in n for x in BOX_SKIP):
+        return None
+    n = re.sub(r"\s*[\[(][^\])]*[\])]", "", n).strip()
+    for code, suffix, _ in BOX_KINDS:
+        if n.endswith(suffix):
+            return code
+    return None
+
+
+def packs_in(product):
+    """Pack count from TCGplayer's description: "Each ... booster box contains 36 booster packs",
+    "• 9 Pokémon TCG: Scarlet & Violet—151 booster packs". None when it doesn't say."""
+    text = next((e["value"] for e in product.get("extendedData", []) if e["name"] == "CardText"), "")
+    text = htmllib.unescape(re.sub(r"<[^>]+>", " ", text or ""))
+    m = re.search(r"\b(\d{1,2})\s+(?:[^\d.;]{0,90}?)\bbooster packs?\b", text, re.I)
+    return int(m.group(1)) if m else None
+
+
+def boxes(products, prices, released):
+    """Cheapest-per-pack product of each box kind -> {kind: [price, packs, productId]}.
+
+    When the description has no count, fall back only where the count is certain: booster boxes 36,
+    half boxes 18, bundles 6; Elite Trainer Boxes 9 (Pokémon Center 11) from Scarlet & Violet on,
+    and 8 before that only for main sets (ones with a booster box) — special-set ETBs vary (10)."""
+    new_era = (released or "") >= "2023/03/31"
+    main_set = any(box_kind(p["name"]) == "b" for p in products)
+    out = {}
+    for p in products:
+        kind, price = box_kind(p["name"]), prices.get(p["productId"])
+        if not kind or not price:
+            continue
+        n = packs_in(p) or dict((k, d) for k, _, d in BOX_KINDS)[kind]
+        if n is None and kind == "e":
+            n = 9 if new_era else (8 if main_set else None)
+        if n is None and kind == "c" and new_era:
+            n = 11
+        if not n:
+            continue
+        if kind not in out or price / n < out[kind][0] / out[kind][1]:
+            out[kind] = [round(price, 2), n, p["productId"]]
+    return out
+
+
 SAMPLE_SETS = 15        # how many recent priced sets feed the rarity baselines
 MIN_SAMPLE = 2          # a rarity needs this many real prices before it becomes a baseline
                         # (Mega Hyper Rare is genuinely only 2-3 cards per set)
@@ -186,7 +243,7 @@ def main():
         for k in keys(g["name"]):
             by_norm.setdefault(k, g)
 
-    matched, unmatched = {}, []
+    matched, unmatched, released = {}, [], {}
     for s in sets:
         g = None
         if s["id"] in OVERRIDES:
@@ -203,6 +260,7 @@ def main():
             unmatched.append(s["name"])
         else:
             matched[s["id"]] = g
+            released[s["id"]] = s.get("releaseDate")
 
     print(f"matched {len(matched)}/{len(sets)}; unmatched: {', '.join(unmatched) or 'none'}")
 
@@ -229,6 +287,10 @@ def main():
                 out[key] = round(v, 2)
         # one single pack, in stock right now: l/lu = cheapest listing, d/du = cheapest TCGplayer Direct
         out.update(in_stock(products, rows, "booster pack"))
+        # boxes of packs, to show when one works out cheaper per pack
+        o = boxes(products, prices, released.get(set_id))
+        if o:
+            out["o"] = o
         return set_id, (out or None)
 
     print("fetching sealed prices…")
@@ -243,8 +305,10 @@ def main():
     packs = sum(1 for v in result.values() if "p" in v)
     stocked = sum(1 for v in result.values() if "l" in v)
     direct = sum(1 for v in result.values() if "d" in v)
+    boxed = sum(1 for v in result.values() if "o" in v)
     print(f"done: {packs} sets with a booster-pack price, {len(result)} with any sealed price")
     print(f"      {stocked} with a single pack in stock on TCGplayer, {direct} from TCGplayer Direct")
+    print(f"      {boxed} with a box of packs (booster box, ETB, bundle) priced")
 
     print("building rarity baselines for cards with no price…")
     est = rarity_baselines(sets)
