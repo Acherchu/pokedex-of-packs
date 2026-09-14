@@ -140,6 +140,14 @@ linked). **The raw cheapest listing is never shown.** No trusted pick → the us
 `PICK_MAX_DAYS` (7) — packs then show the daily-refreshed usual price, "updated daily", with a "See it
 on TCGplayer" link and no seller recommended. Re-run the checker weekly to keep trusted sellers.
 
+**Delivery time.** The user asked for the site to say "how long the order will take to get to your
+house". Every buy box ends with `deliveryLine()`: dates worked out from the viewer's today — TCGplayer
+sellers must ship standard orders within 2 business days (Mon–Fri, not US federal holidays —
+`usHolidays`, weekend holidays moved to the observed day), then USPS takes 2–5 days and delivers
+Saturdays (`addDays(from, n, saturdays)`). Soonest = 1 business day + 2 mail days, latest = 2 + 5.
+Nothing per-seller is known, so it's the policy window, labelled US-only. Tested: Mon Sep 14 2026 →
+Thu Sep 17 – Tue Sep 22; a Friday before Labor Day skips the Monday holiday.
+
 **Daily refresh.** `.github/workflows/refresh-prices.yml` runs `update-pack-prices.py` at 20:40 UTC
 every day (tcgcsv updates ~20:00 UTC; it has no CORS, so the browser can't fetch it — once a day is as
 fresh as that data gets), commits `index.html` as github-actions[bot] if anything changed, and POSTs

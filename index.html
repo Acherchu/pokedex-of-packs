@@ -226,6 +226,8 @@
   .buybtn{display:inline-block;background:linear-gradient(180deg,#ffd633,#f0b90b);color:var(--navy);font-weight:800;
     text-decoration:none;border-radius:10px;padding:9px 14px;font-size:14px;white-space:nowrap}
   .buybtn:hover{filter:brightness(1.08)}
+  .buybox .eta{flex:1 1 100%;display:flex;gap:8px;align-items:flex-start;border-top:1px solid var(--line);padding-top:10px;color:var(--dim);font-size:13px;line-height:1.45}
+  .buybox .eta b{color:var(--text)}
 
   /* ---------- set detail ---------- */
   .back{
@@ -1705,6 +1707,35 @@ function priceLabel(id){
   if(i.best) return '<b>' + money(i.best.total) + '</b> <span class="per">a pack</span><span class="stock">in stock · trusted seller</span>';
   return '<b>' + money(i.avg) + '</b> <span class="per">a pack</span><span class="stock warn">' + (picksFresh() ? "usual price · no trusted seller in stock" : "usual price · updated daily") + '</span>';
 }
+/* How long a TCGplayer order takes to reach your house, worked out from today. TCGplayer requires
+   sellers to ship standard orders within 2 business days (Mon–Fri, not federal holidays), then USPS
+   standard mail takes 2–5 days and delivers Saturdays too. So the earliest is "ships tomorrow, 2 mail
+   days", the latest "ships on business day 2, 5 mail days". US addresses only. */
+function usHolidays(y){
+  const nth = (m, wd, n) => { const d = new Date(y, m, 1); d.setDate(1 + (wd - d.getDay() + 7) % 7 + (n - 1) * 7); return d; };
+  const last = (m, wd) => { const d = new Date(y, m + 1, 0); d.setDate(d.getDate() - (d.getDay() - wd + 7) % 7); return d; };
+  const fixed = (m, day) => { const d = new Date(y, m, day); if(d.getDay() === 6) d.setDate(day - 1); if(d.getDay() === 0) d.setDate(day + 1); return d; };
+  return new Set([fixed(0, 1), nth(0, 1, 3), nth(1, 1, 3), last(4, 1), fixed(5, 19), fixed(6, 4), nth(8, 1, 1),
+    nth(9, 1, 2), fixed(10, 11), nth(10, 4, 4), fixed(11, 25)].map(d => d.toDateString()));
+}
+function addDays(from, n, saturdays){
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate());
+  while(n > 0){
+    d.setDate(d.getDate() + 1);
+    const wd = d.getDay();
+    if(wd === 0 || (wd === 6 && !saturdays) || usHolidays(d.getFullYear()).has(d.toDateString())) continue;
+    n--;
+  }
+  return d;
+}
+function deliveryLine(){
+  const now = new Date(), day = d => d.toLocaleDateString("en-US", {weekday: "short", month: "short", day: "numeric"});
+  const soonest = addDays(addDays(now, 1, false), 2, true), latest = addDays(addDays(now, 2, false), 5, true);
+  const days = d => Math.round((d - new Date(now.getFullYear(), now.getMonth(), now.getDate())) / 864e5);
+  return '<div class="eta">🚚 <span><b>Gets to your house ' + day(soonest) + ' – ' + day(latest) + '</b> if you order today'
+    + ' (' + days(soonest) + '–' + days(latest) + ' days). The seller has 2 business days to ship it, then the mail takes 2–5 days.'
+    + ' US addresses — Alaska, Hawaii and other countries take longer.</span></div>';
+}
 function buyBox(id){
   const i = packInfo(id);
   if(!i) return '';
@@ -1723,7 +1754,7 @@ function buyBox(id){
       + (skippedTxt.length ? ' Cheaper listings were skipped: ' + esc(skippedTxt.join(", ")) + '.' : '')
       + (i.avg ? ' Packs usually sell for about ' + money(i.avg) + '.' : '')
       + ' TCGplayer orders are covered by its money-back guarantee. On the pack\'s page, pick the listing from ' + esc(b.seller) + '.</div>'
-      + '<a class="buybtn" href="' + product + '" target="_blank" rel="noopener noreferrer">Buy on TCGplayer ↗</a></div>';
+      + '<a class="buybtn" href="' + product + '" target="_blank" rel="noopener noreferrer">Buy on TCGplayer ↗</a>' + deliveryLine() + '</div>';
   }
   if(!picksFresh()){
     const today = fmtDate(String(PACK_PRICES.d || "").replace(/-/g, "/"));
@@ -1731,12 +1762,12 @@ function buyBox(id){
       + '<div class="bt"><b>What a single pack sells for on TCGplayer</b>, as of ' + esc(today) + ' — updated every day. '
       + 'The trusted-seller check is out of date, so no seller is recommended right now. If you buy one, pick a seller with lots of sales and 99%+ positive feedback.</div>'
       + (PACK_PRICES.s[id] && PACK_PRICES.s[id].lu ? '<a class="buybtn" href="https://www.tcgplayer.com/product/' + PACK_PRICES.s[id].lu + '?Language=English" target="_blank" rel="noopener noreferrer">See it on TCGplayer ↗</a>' : '')
-      + '</div>';
+      + deliveryLine() + '</div>';
   }
   return '<div class="buybox sus"><div class="bp">' + money(i.avg) + '</div>'
     + '<div class="bt"><b>No trusted seller had a single pack in stock</b> on TCGplayer as of ' + esc(when) + '.'
     + (skippedTxt.length ? ' The listings there were skipped: ' + esc(skippedTxt.join(", ")) + '.' : '')
-    + ' That\'s what packs have recently sold for. If you buy one, pick a seller with lots of sales and 99%+ positive feedback.</div></div>';
+    + ' That\'s what packs have recently sold for. If you buy one, pick a seller with lots of sales and 99%+ positive feedback.</div>' + deliveryLine() + '</div>';
 }
 
 function money(n){
