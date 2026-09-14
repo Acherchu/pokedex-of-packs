@@ -1,0 +1,42 @@
+# Refreshes the pack prices baked into index.html every day and republishes the site.
+# tcgcsv.com (the price source) updates once a day at about 20:00 UTC and can't be fetched from a
+# browser, so this runs update-pack-prices.py shortly after and commits the result. Turn it off from
+# the repo's Actions tab, or delete this file.
+name: Refresh pack prices
+
+on:
+  schedule:
+    - cron: "40 20 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency: refresh-prices
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Refresh prices
+        run: python update-pack-prices.py
+      - name: Commit and republish if anything changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if git diff --quiet; then
+            echo "Prices unchanged."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Daily pack price refresh ($(date -u +%F))"
+          git push
+          # a push made with this token may not start a Pages build on its own
+          gh api -X POST "repos/${{ github.repository }}/pages/builds" || true

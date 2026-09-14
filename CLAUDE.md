@@ -73,7 +73,8 @@ set's cards (`set:<id>`) and every search page (`search:<type>|<term>|<page>`):
   re-renders keeping scroll. No saved copy → it waits for the API as before.
 - Failed background checks retry at 4s / 15s / 45s (`CACHE_RETRY`) — the free API fails outright
   often enough that without this a stale copy just stays (seen in testing).
-- The same key isn't re-checked within 60s in one visit (`CACHE_RECHECK_MS`), for the ~1000/day limit.
+- **Every use checks** (`CACHE_RECHECK_MS = 0`) — the user asked for prices to "always reset every
+  new time you look at them". Only a check already under way is shared rather than started twice.
 - **IndexedDB, never localStorage** — set data is hundreds of KB and localStorage holds the accounts.
   The old `pkSets` localStorage copy is moved into IndexedDB once and deleted. LRU cap 250 entries.
   If IndexedDB is unavailable, everything simply loads from the network.
@@ -135,7 +136,15 @@ TCGplayer ↗** to the pack's page with a note to pick that seller's listing (li
 linked). **The raw cheapest listing is never shown.** No trusted pick → the usual sale price, labelled
 "no trusted seller in stock". The "Priciest pack" sort uses the same number. `PACK_PRICES.s[id].lu`
 (from `update-pack-prices.py`) is still the product id used for the link and the checker's input.
-**It's a snapshot**: re-run the checker to refresh; it goes stale as listings sell.
+**It's a snapshot** that can only be redone by hand: `picksFresh()` stops showing picks older than
+`PICK_MAX_DAYS` (7) — packs then show the daily-refreshed usual price, "updated daily", with a "See it
+on TCGplayer" link and no seller recommended. Re-run the checker weekly to keep trusted sellers.
+
+**Daily refresh.** `.github/workflows/refresh-prices.yml` runs `update-pack-prices.py` at 20:40 UTC
+every day (tcgcsv updates ~20:00 UTC; it has no CORS, so the browser can't fetch it — once a day is as
+fresh as that data gets), commits `index.html` as github-actions[bot] if anything changed, and POSTs
+a Pages build (a GITHUB_TOKEN push may not trigger one). `workflow_dispatch` runs it by hand from the
+Actions tab. Pull before editing `index.html` — the bot commits to `main` daily.
 
 114 of 174 sets end up with a pack price. The rest show "not sold in packs", which is accurate —
 promos, Trainer Galleries, Shiny Vaults and Energies were never sold that way.

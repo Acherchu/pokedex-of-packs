@@ -496,9 +496,9 @@ async function getJSON(url, tries){
    kept, least recently used dropped first. If IndexedDB is unavailable (some private windows),
    everything just loads from the network like before.
 
-   "Every time" has one allowance: the same thing isn't re-checked within CACHE_RECHECK_MS in one
-   visit (flicking back and forth between two sets), because the free API allows ~1000 calls a day. */
-const CACHE_MAX = 250, CACHE_RECHECK_MS = 60000, CACHE_RETRY = [4000, 15000, 45000];
+   The user asked for prices to be fresh every time they're looked at, so every use checks —
+   CACHE_RECHECK_MS is 0. (Only a check already under way is shared, not started twice.) */
+const CACHE_MAX = 250, CACHE_RECHECK_MS = 0, CACHE_RETRY = [4000, 15000, 45000];
 const cacheMem = new Map();      // key -> {s: JSON string, d: parsed}, this visit
 const cacheChecked = new Map();  // key -> when it was last checked against the API, this visit
 const cacheFlight = new Map();   // key -> the API request already under way
@@ -1673,8 +1673,16 @@ function findTile(c){
    when nothing passed. The raw cheapest listing is never shown — if no seller passes, the site shows
    what packs usually sell for and says no trusted seller had one. PACK_PRICES.s[id].p is that usual
    (recent average sale) price; lu is the pack's TCGplayer product id for the buy link. */
+/* A seller check goes stale as listings sell, and it can only be redone by hand (TCGplayer blocks
+   scripts), while PACK_PRICES refreshes itself every day. So a pick older than PICK_MAX_DAYS isn't
+   shown as "in stock" any more — the pack falls back to the daily usual price. */
+const PICK_MAX_DAYS = 7;
+function picksFresh(){
+  const d = new Date(String(PACK_PICKS.d) + "T00:00:00Z");
+  return Number.isFinite(d.getTime()) && (Date.now() - d.getTime()) / 86400000 <= PICK_MAX_DAYS;
+}
 function packInfo(id){
-  const x = PACK_PRICES.s[id], k = PACK_PICKS.s[id];
+  const x = PACK_PRICES.s[id], k = picksFresh() ? PACK_PICKS.s[id] : null;
   if(!x && !k) return null;
   const avg = x && x.p != null ? x.p : null;
   let best = null, skipped = null;
@@ -1695,7 +1703,7 @@ function priceLabel(id){
   const i = packInfo(id);
   if(!i) return '<span class="pending">not sold in packs</span>';
   if(i.best) return '<b>' + money(i.best.total) + '</b> <span class="per">a pack</span><span class="stock">in stock · trusted seller</span>';
-  return '<b>' + money(i.avg) + '</b> <span class="per">a pack</span><span class="stock warn">usual price · no trusted seller in stock</span>';
+  return '<b>' + money(i.avg) + '</b> <span class="per">a pack</span><span class="stock warn">' + (picksFresh() ? "usual price · no trusted seller in stock" : "usual price · updated daily") + '</span>';
 }
 function buyBox(id){
   const i = packInfo(id);
@@ -1716,6 +1724,14 @@ function buyBox(id){
       + (i.avg ? ' Packs usually sell for about ' + money(i.avg) + '.' : '')
       + ' TCGplayer orders are covered by its money-back guarantee. On the pack\'s page, pick the listing from ' + esc(b.seller) + '.</div>'
       + '<a class="buybtn" href="' + product + '" target="_blank" rel="noopener noreferrer">Buy on TCGplayer ↗</a></div>';
+  }
+  if(!picksFresh()){
+    const today = fmtDate(String(PACK_PRICES.d || "").replace(/-/g, "/"));
+    return '<div class="buybox"><div class="bp">' + money(i.avg) + '</div>'
+      + '<div class="bt"><b>What a single pack sells for on TCGplayer</b>, as of ' + esc(today) + ' — updated every day. '
+      + 'The trusted-seller check is out of date, so no seller is recommended right now. If you buy one, pick a seller with lots of sales and 99%+ positive feedback.</div>'
+      + (PACK_PRICES.s[id] && PACK_PRICES.s[id].lu ? '<a class="buybtn" href="https://www.tcgplayer.com/product/' + PACK_PRICES.s[id].lu + '?Language=English" target="_blank" rel="noopener noreferrer">See it on TCGplayer ↗</a>' : '')
+      + '</div>';
   }
   return '<div class="buybox sus"><div class="bp">' + money(i.avg) + '</div>'
     + '<div class="bt"><b>No trusted seller had a single pack in stock</b> on TCGplayer as of ' + esc(when) + '.'
